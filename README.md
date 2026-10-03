@@ -58,4 +58,5 @@ Choose "Claude" when founding a company (or set `DESPORTO_AI_PROVIDER=anthropic`
 - [Agent model](docs/AGENT_MODEL.md)
 - [Economy](docs/ECONOMY.md)
 - [Decision log](docs/DECISIONS.md)
+- [Playtest checklist](docs/PLAYTEST.md)
 - [Roadmap](ROADMAP.md)

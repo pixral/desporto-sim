@@ -24,6 +24,7 @@ log = logging.getLogger("desporto.runner")
 # seconds between phases (4 phases per simulated day)
 SPEEDS: dict[str, float] = {"1x": 6.0, "2x": 3.0, "4x": 1.5, "16x": 0.35, "64x": 0.08, "max": 0.0}
 MAX_PUBLISH_INTERVAL = 0.2  # throttle websocket pushes at high speed
+AUTOSAVE_MIN_SECONDS = 60.0  # real time between autosaves (saves grow to megabytes after a few years)
 
 
 class SimulationRunner:
@@ -42,6 +43,7 @@ class SimulationRunner:
         self._last_publish = 0.0
         self._task: asyncio.Task | None = None
         self._last_month = ""
+        self._last_autosave = 0.0
         self.providers: dict[str, str] = {}
 
     # ------------------------------------------------------------------ lifecycle
@@ -145,12 +147,14 @@ class SimulationRunner:
             if world.ended:
                 self.running = False
                 await self._save(f"Final — {world.end_reason or 'ended'}", "final")
-            elif month != self._last_month and world.clock.phase_index == 1:
+            elif world.clock.phase_index == 1 and (month != self._last_month or world.today.weekday() == 0):
+                # month closes and Mondays are save points, but at most once a minute of real time so
+                # fast-forwarding isn't slowed down by writing multi-megabyte saves
+                if time.perf_counter() - self._last_autosave >= AUTOSAVE_MIN_SECONDS:
+                    label = f"Autosave {month}" if month != self._last_month else f"Autosave {world.today.isoformat()}"
+                    await self._save(label, "auto")
+                    self._last_autosave = time.perf_counter()
                 self._last_month = month
-                await self._save(f"Autosave {month}", "auto")
-            elif world.today.weekday() == 0 and world.clock.phase_index == 1:
-                # weekly safety net: a hard kill of the server loses at most a week
-                await self._save(f"Autosave {world.today.isoformat()}", "auto")
             if len(self._pending_ai) >= 50:
                 await self.flush_ai()
         if publish:

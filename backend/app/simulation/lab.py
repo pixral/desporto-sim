@@ -138,7 +138,7 @@ def complete_experiment(world: World, index: SportsIndex, popular: set[str], x: 
     else:
         world.stats.strategies_invented += 1
         breakthrough = x.recommendation == "DEPLOY" and roi >= 0.05 and n >= 200 and hold.roi >= 0.03
-        importance = 3 if breakthrough else 2 if x.recommendation == "DEPLOY" else 1
+        importance = 3 if breakthrough else 1  # deployments get their own (notable) event
         title = (f"LAB breakthrough: '{x.name}'" if breakthrough
                  else f"LAB invents '{x.name}' ({x.recommendation.lower()})")
         history.record(world, "strategy_invented", title, f"{x.hypothesis} {x.recommendation_text}",
