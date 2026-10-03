@@ -8,10 +8,10 @@ The clock is simulated and decoupled from wall-clock time. One `step()` = one ph
 
 | Phase | Time | What happens |
 |---|---|---|
-| morning | 08:00 | Day reset. On the 1st: **month close**, LAB audit, candidate refresh, LAB backtests of applicants, **CEO monthly review**. On Mondays: **CEO weekly review**. Fixtures (next 7 days), odds and team news are synced. LAB researchers progress/finish experiments and start new ones. |
+| morning | 08:00 | Day reset. On the 1st: **month close**, the **board review** (may replace a CEO who wrecked the company), **raise demands**, **season awards** on 1 June, LAB audit, candidate refresh, LAB backtests of applicants, **CEO monthly review**. On Mondays: **CEO weekly review**. Fixtures (next 7 days), odds and team news are synced. LAB researchers progress/finish experiments and start new ones. |
 | analysis | 11:00 | Today's matches are assigned (desk competitions ∩ strategy competitions, max 6 per tipster). Strategies compute probabilities/edges. Each tipster's top pick is shared as a *leaning* with colleagues. One AI call per tipster returns BET/NO_BET per match. Valid bets are booked at the best available price. |
 | matches | 16:00 | Kick-offs; closing prices captured; tipsters with open bets watch. |
-| settlement | 23:30 | Results (goals + xG) fetched, bets settled, psychology/relationships updated, daily costs accrued, liquidity check, valuation snapshot, milestones, insolvency check. |
+| settlement | 23:30 | Results (goals + xG) fetched, bets settled, psychology/relationships updated, **workplace drama** (desk arguments and celebrations, rival syndicates' poaching offers, resentment after refused raises), daily costs accrued, liquidity check, valuation snapshot, milestones, insolvency check. |
 
 Runner speeds (seconds per phase): 1× 6 s, 2× 3 s, 4× 1.5 s, 16× 0.35 s, 64× 0.08 s, max = as fast as possible.
 Autosaves: founding, every month close, every Monday, bankruptcy (final).

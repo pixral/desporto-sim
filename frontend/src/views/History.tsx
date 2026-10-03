@@ -7,6 +7,7 @@ import { useLive } from "../util/hooks";
 export function History() {
   const state = useStore((s) => s.state);
   const select = useStore((s) => s.selectEmployee);
+  const openRecap = useStore((s) => s.setRecapOpen);
   const [minImp, setMinImp] = useState(2);
   const { data } = useLive(() => api.history(minImp), `${minImp}:${state?.clock.day_index}`);
   const groups: [string, NonNullable<typeof data>][] = [];
@@ -41,8 +42,12 @@ export function History() {
                 <div
                   key={e.id}
                   className={`tl-item tone-${e.tone} imp-${e.importance}`}
-                  onClick={() => e.employee_ids[0] && select(e.employee_ids[0])}
-                  style={{ cursor: e.employee_ids[0] ? "pointer" : "default", marginBottom: 4 }}
+                  onClick={() =>
+                    e.kind === "season_awards" && e.data.recap_id
+                      ? openRecap(String(e.data.recap_id))
+                      : e.employee_ids[0] && select(e.employee_ids[0])
+                  }
+                  style={{ cursor: e.employee_ids[0] || e.kind === "season_awards" ? "pointer" : "default", marginBottom: 4 }}
                 >
                   <span className="muted">{shortDate(e.time)}</span>
                   <span className="bar" />

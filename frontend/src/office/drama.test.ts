@@ -28,7 +28,7 @@ describe("drama", () => {
     const d = new Drama();
     d.ingest(state([], [bet("b1", "e1")]), 0);
     d.ingest(state([], [bet("b1", "e1"), bet("b2", "e1", ["Rui"])]), 5);
-    expect(d.links).toEqual([{ from: "e1", to: "e2", born: 5 }]);
+    expect(d.links).toEqual([{ from: "e1", to: "e2", born: 5, kind: "influence" }]);
     d.expire(60_000);
     expect(d.links).toHaveLength(0);
   });

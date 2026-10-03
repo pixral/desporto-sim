@@ -24,6 +24,8 @@ export function EndScreen() {
     ["Worst employee", s.worst_employee ? `${s.worst_employee} (${signedEur(s.worst_employee_profit)})` : "—"],
     ["Departments created / closed", `${s.departments_created} / ${s.departments_closed}`],
     ["Strategies invented by the LAB", String(s.strategies_invented)],
+    ["CEOs fired by the board", String(s.ceo_changes ?? 0)],
+    ["Seasons completed", String(s.seasons ?? 0)],
     ["AI calls / cost", `${s.ai_calls.toLocaleString()} / $${s.ai_cost_usd.toFixed(2)}`],
   ];
   return (

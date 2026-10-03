@@ -13,6 +13,7 @@ export interface Link {
   from: string;
   to: string;
   born: number;
+  kind: "influence" | "clash" | "friends";
 }
 
 export interface Burst {
@@ -52,6 +53,26 @@ function shoutFor(e: HistoryEvent): { text: string; color: string } | null {
       return { text: "New desk!", color: NEUTRAL };
     case "memo":
       return { text: "Memo for everyone!", color: NEUTRAL };
+    case "poach_offer":
+      return { text: "A rival wants me…", color: DRAMA };
+    case "counter_offer":
+      return { text: "Raise to stay!", color: GOOD };
+    case "poached":
+      return { text: `Off to ${String(e.data.rival ?? "a rival")}!`, color: BAD };
+    case "loyal":
+      return { text: "Staying loyal.", color: GOOD };
+    case "raise_demand":
+      return { text: "I deserve more.", color: DRAMA };
+    case "raise_granted":
+      return { text: "Raise!", color: GOOD };
+    case "raise_refused":
+      return { text: "Unbelievable…", color: BAD };
+    case "board_fires_ceo":
+      return { text: "…the board?!", color: BAD };
+    case "new_ceo":
+      return { text: "A new era!", color: DRAMA };
+    case "season_awards":
+      return { text: "MVP!", color: GOOD };
     case "big_win": {
       const m = e.title.match(/\(\+€([\d,]+)\)/);
       return { text: m ? `+€${m[1]}!` : "Winner!", color: GOOD };
@@ -81,13 +102,28 @@ export class Drama {
       if (this.seenEvents.has(e.id)) continue;
       this.seenEvents.add(e.id);
       const who = e.employee_ids[0];
-      const s = shoutFor(e);
-      if (s && who) {
-        this.shouts = this.shouts.filter((x) => x.actorId !== who);
-        this.shouts.push({ actorId: who, ...s, born: now });
+      const lines = e.data.lines as Record<string, string> | undefined;
+      if (lines) {
+        // two-person scenes: each says their own line
+        const color = e.kind === "argument" ? BAD : GOOD;
+        for (const [id, text] of Object.entries(lines)) {
+          this.shouts = this.shouts.filter((x) => x.actorId !== id);
+          this.shouts.push({ actorId: id, text, color, born: now });
+        }
+        if (e.employee_ids.length >= 2) {
+          this.links.push({ from: e.employee_ids[0], to: e.employee_ids[1], born: now,
+                            kind: e.kind === "argument" ? "clash" : "friends" });
+        }
+      } else {
+        const s = shoutFor(e);
+        if (s && who) {
+          this.shouts = this.shouts.filter((x) => x.actorId !== who);
+          this.shouts.push({ actorId: who, ...s, born: now });
+        }
       }
-      if (e.kind === "big_win" && who) this.bursts.push({ actorId: who, born: now, seed: Math.random() * 1000 });
-      if (e.kind === "promotion" && who) this.bursts.push({ actorId: who, born: now, seed: Math.random() * 1000 });
+      if (who && ["big_win", "promotion", "season_awards", "counter_offer"].includes(e.kind)) {
+        this.bursts.push({ actorId: who, born: now, seed: Math.random() * 1000 });
+      }
     }
     const idByName = new Map(state.employees.map((x) => [x.name, x.id]));
     for (const b of state.ticker) {
@@ -95,7 +131,7 @@ export class Drama {
       this.seenBets.add(b.id);
       for (const name of b.influenced_by) {
         const to = idByName.get(name);
-        if (to) this.links.push({ from: b.employee_id, to, born: now });
+        if (to) this.links.push({ from: b.employee_id, to, born: now, kind: "influence" });
       }
     }
     if (this.seenEvents.size > 2000) this.seenEvents = new Set(state.events.map((e) => e.id));

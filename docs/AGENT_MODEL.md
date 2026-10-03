@@ -104,3 +104,21 @@ desk, ambition, promotions). Trust decides whose leanings a tipster sees and how
 overrides: `DESPORTO_MODEL_TIPSTER_DAY`, `DESPORTO_MODEL_CEO_REVIEW`, `DESPORTO_MODEL_LAB_HYPOTHESIS`,
 `DESPORTO_EFFORT_*`. Invalid outputs are retried twice with the validation error; then a safe fallback
 (no bets / no actions) is used and the failure is logged.
+
+## Workplace drama (`simulation/drama.py`)
+
+Deterministic, personality-driven, no AI calls:
+
+- **Desk arguments**: desk-mates with high rivalry who end the day on opposite sides of zero may clash
+  (more likely for aggressive/stubborn people); trust drops, rivalry and stress rise. Close friends who both win
+  celebrate together. At most one scene per desk per week. Rivalry grows when a desk-mate outperforms you.
+- **Poaching**: rival syndicates court proven stars (good reputation, ≥120 bets, career z ≥ 1). The CEO's style
+  decides whether to counter with a raise (aggressive almost always, conservative rarely, data-driven if the
+  evidence is strong); otherwise the star may leave.
+- **Raise demands**: ambitious people on a hot streak who haven't had a raise or promotion for months ask for
+  more. A refusal costs trust in the CEO and leaves them restless (they may quit within 90 days).
+- **The board**: after 180+ days, if company value falls below 45% of the starting capital (or a 60% drawdown
+  while strained/in distress), investors may fire the CEO and appoint one with a different style. No money is
+  injected. At most once a year.
+- **Season awards** (1 June): MVP, flop of the season, sharpest, biggest win, desk of the season and LAB idea of
+  the season, plus the season's totals. Shown as an "Awards night" screen and kept in History.

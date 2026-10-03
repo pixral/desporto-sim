@@ -56,6 +56,12 @@ class RunStats(Model):
     current_company_losing_days: int = 0
     salary_cuts: int = 0
     loans_taken: int = 0
+    arguments: int = 0
+    poach_offers: int = 0
+    poached: int = 0
+    raises_granted: int = 0
+    raises_refused: int = 0
+    ceo_changes: int = 0
 
 
 class AIStats(Model):
@@ -66,6 +72,30 @@ class AIStats(Model):
     output_tokens: int = 0
     cost_usd: float = 0.0
     by_purpose: dict[str, dict[str, float]] = Field(default_factory=dict)
+
+
+class Award(Model):
+    title: str
+    name: str
+    employee_id: str | None = None
+    value: float = 0.0
+    text: str = ""
+
+
+class SeasonRecap(Model):
+    id: str
+    season: str
+    created: date
+    awards: list[Award] = Field(default_factory=list)
+    net: float = 0.0
+    betting: float = 0.0
+    value_start: float = 0.0
+    value_end: float = 0.0
+    bets: int = 0
+    hires: int = 0
+    fires: int = 0
+    quits: int = 0
+    headline: str = ""
 
 
 class RunSummary(Model):
@@ -98,6 +128,8 @@ class RunSummary(Model):
     strategies_invented: int
     ai_cost_usd: float
     ai_calls: int
+    ceo_changes: int = 0
+    seasons: int = 0
 
 
 class World(Model):
@@ -125,6 +157,7 @@ class World(Model):
     events: list[HistoryEvent] = Field(default_factory=list)
     memos: list[Memo] = Field(default_factory=list)
     management_log: list[ManagementLog] = Field(default_factory=list)
+    recaps: list[SeasonRecap] = Field(default_factory=list)
     counters: dict[str, int] = Field(default_factory=dict)
     milestones: dict[str, Any] = Field(default_factory=dict)
     stats: RunStats = Field(default_factory=RunStats)

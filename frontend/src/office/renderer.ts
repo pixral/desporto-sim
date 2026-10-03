@@ -411,12 +411,22 @@ export class OfficeRenderer {
       const crawl = Math.floor(now / 120) % 2;
       ctx.save();
       ctx.globalAlpha = Math.min(1, 2 * (1 - t));
-      ctx.fillStyle = "#ffd25a";
-      for (let i = crawl; i <= steps; i += 2) {
-        const f = i / steps;
-        ctx.fillRect(Math.round(a.x + (b.x - a.x) * f), Math.round(a.y + (b.y - a.y) * f - Math.sin(f * Math.PI) * 10), 1, 1);
+      if (l.kind === "clash") {
+        // a jittering red zig-zag: these two are not getting along
+        ctx.fillStyle = "#ff5a5a";
+        for (let i = 0; i <= steps; i++) {
+          const f = i / steps;
+          const zig = (i % 4 < 2 ? 1 : -1) * 2 + (Math.floor(now / 90) % 2);
+          ctx.fillRect(Math.round(a.x + (b.x - a.x) * f), Math.round(a.y + (b.y - a.y) * f + zig - 4), 1, 1);
+        }
+      } else {
+        ctx.fillStyle = l.kind === "friends" ? "#7cf0a0" : "#ffd25a";
+        for (let i = crawl; i <= steps; i += 2) {
+          const f = i / steps;
+          ctx.fillRect(Math.round(a.x + (b.x - a.x) * f), Math.round(a.y + (b.y - a.y) * f - Math.sin(f * Math.PI) * 10), 1, 1);
+        }
+        ctx.fillRect(Math.round(b.x) - 1, Math.round(b.y) - 1, 3, 3);
       }
-      ctx.fillRect(Math.round(b.x) - 1, Math.round(b.y) - 1, 3, 3);
       ctx.restore();
     }
     const colors = ["#ffd25a", "#7cf0a0", "#ff6bd1", "#6cc4ff", "#fdf6e3"];

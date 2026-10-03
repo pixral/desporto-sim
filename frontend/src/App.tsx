@@ -6,6 +6,7 @@ import { EndScreen } from "./components/EndScreen";
 import { KpiStrip } from "./components/KpiStrip";
 import { NavRail } from "./components/NavRail";
 import { NewRunDialog } from "./components/NewRunDialog";
+import { RecapModal } from "./components/RecapModal";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { OfficeCanvas } from "./office/OfficeCanvas";
@@ -92,6 +93,7 @@ export function App() {
       </div>
       {showNewRun && <NewRunDialog />}
       <EndScreen />
+      <RecapModal />
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

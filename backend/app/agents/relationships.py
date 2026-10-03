@@ -38,8 +38,10 @@ def monthly_update(world: World, perf_roi: dict[str, float], perf_bets: dict[str
                 rel.respect += 0.3 * (target - rel.respect)
             same_dept = a.department_id is not None and a.department_id == b.department_id
             if same_dept and a.role == b.role == "tipster":
-                rel.rivalry = clamp(rel.rivalry + 1.5 * a.traits.ambitious, 0, 100)
-            rel.rivalry *= 0.92
+                # desk-mates compete; being outperformed by the person next to you stings more
+                outperformed = perf_roi.get(b.id, 0.0) > perf_roi.get(a.id, 0.0)
+                rel.rivalry = clamp(rel.rivalry + 4.0 * a.traits.ambitious * (1.0 if outperformed else 0.35), 0, 100)
+            rel.rivalry *= 0.93
             # trust drifts towards what people's results have earned (respect), damped by rivalry;
             # sitting at the same desk every day builds familiarity
             anchor = 50 + 0.6 * (rel.respect - 50) - 0.3 * rel.rivalry + (6 if same_dept else 0)

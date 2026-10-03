@@ -128,6 +128,8 @@ def state_view(world: World, runner: dict[str, Any] | None = None, providers: di
         "today": {"matches": len(today_matches), "live": sum(1 for m in today_matches if m.status == "live"),
                   "finished": sum(1 for m in today_matches if m.status == "finished")},
         "summary": world.summary.model_dump(mode="json") if world.summary else None,
+        "latest_recap": ({"id": world.recaps[-1].id, "season": world.recaps[-1].season}
+                         if world.recaps else None),
     }
 
 
@@ -252,6 +254,10 @@ def history_view(world: World, min_importance: int = 1, limit: int = 600) -> lis
 
 def management_view(world: World) -> list[dict[str, Any]]:
     return [m.model_dump(mode="json") for m in world.management_log[::-1][:60]]
+
+
+def recaps_view(world: World) -> list[dict[str, Any]]:
+    return [r.model_dump(mode="json") for r in reversed(world.recaps)]
 
 
 def summary_view(world: World) -> dict[str, Any]:

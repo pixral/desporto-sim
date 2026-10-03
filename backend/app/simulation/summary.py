@@ -7,7 +7,8 @@ from app.economy import valuation as val
 
 
 def build_summary(world: World) -> RunSummary:
-    ceo = next((e for e in world.employees.values() if e.role == "ceo"), None)
+    ceo = next((e for e in world.employees.values() if e.role == "ceo" and e.active), None) or next(
+        (e for e in reversed(list(world.employees.values())) if e.role == "ceo"), None)
     tipsters = [e for e in world.employees.values() if e.role == "tipster" and e.bets_total > 0]
     best = max(tipsters, key=lambda e: e.profit, default=None)
     worst = min(tipsters, key=lambda e: e.profit, default=None)
@@ -15,7 +16,7 @@ def build_summary(world: World) -> RunSummary:
     return RunSummary(
         company_name=world.config.company_name,
         ceo_name=ceo.name if ceo else "?",
-        ceo_style=world.config.ceo_style,
+        ceo_style=ceo.ceo_style if ceo and ceo.ceo_style else world.config.ceo_style,
         ended=world.ended,
         end_reason=world.end_reason,
         founded=world.config.start_date,
@@ -42,4 +43,6 @@ def build_summary(world: World) -> RunSummary:
         strategies_invented=world.stats.strategies_invented,
         ai_cost_usd=round(world.ai_stats.cost_usd, 4),
         ai_calls=world.ai_stats.calls,
+        ceo_changes=world.stats.ceo_changes,
+        seasons=len(world.recaps),
     )

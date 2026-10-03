@@ -40,7 +40,7 @@ from app.economy import accounting
 from app.economy import valuation as val
 from app.sports.provider import ISportsDataProvider
 
-from . import history, lab, metrics
+from . import drama, history, lab, metrics
 from .rng import dump_rng, load_rng
 from .summary import build_summary
 
@@ -135,6 +135,7 @@ class SimulationEngine:
                 return
         self._sync_sports()
         if d.day == 1 and w.clock.day_index > 0:
+            drama.monthly(w, self.rng)
             lab.run_audit(w)
             self._refresh_candidates(force=True)
             lab.evaluate_candidates(w, self.index, self.popular)
@@ -325,13 +326,16 @@ class SimulationEngine:
             psychology.on_bet_settled(emp, bet, max_stake or bet.stake)
             if bet.influenced_by:
                 relationships.on_influenced_bet(w, emp, bet)
-            big = 0.01 * w.config.starting_capital
-            if bet.status == "won" and (bet.profit >= big or (bet.odds >= 6.0 and bet.profit >= big / 3)):
+            big = 0.025 * w.config.starting_capital
+            memorable = bet.profit >= big or (bet.odds >= 8.0 and bet.profit >= big / 2.5)
+            if bet.status == "won" and memorable and w.today.toordinal() - int(w.milestones.get(f"win:{emp.id}", 0)) >= 7:
+                w.milestones[f"win:{emp.id}"] = w.today.toordinal()
                 history.record(w, "big_win", f"{emp.name} lands {bet.selection} @ {bet.odds} (+€{bet.profit:.0f})",
                                f"{bet.match_label} finished {bet.score}.", 2 if bet.profit >= 2 * big else 1, "good",
                                [emp.id], bet.department_id)
         day_pnl = sum(d.day_profit for d in w.departments.values())
         self._daily_people()
+        drama.daily(w, self.rng)
         accounting.accrue_daily_costs(w)
         for note in accounting.ensure_liquidity(w):
             history.record(w, "liquidity", note, "", 2, "bad")

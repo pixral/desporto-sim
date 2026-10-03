@@ -28,6 +28,13 @@ presets (capital, costs, subscribers, bookmaker sharpness) in the New company di
 per CEO style. Office drama: speech bubbles on events (fired, promoted, I quit, refusals, big wins with
 confetti), influence lines between colleagues, quieter idle bubbles, collapsible legend, themed scrollbars.
 
+## Done since (2026-10-03, late night)
+
+Drama & story: desk arguments and celebrations (with red clash / green lines in the office), rival
+syndicates poaching stars (CEO counter-offers by style), raise demands and resentment, the board firing a CEO
+who wrecked the company, season awards with an "Awards night" screen; names are unique across a company's
+history; big wins/swings rate-limited so the timeline stays readable.
+
 ## Next
 
 1. Visual polish pass with fresh eyes on a long run (label overlap at small zoom, crowded Bench).
@@ -36,6 +43,6 @@ confetti), influence lines between colleagues, quieter idle bubbles, collapsible
 3. Performance: cache team ratings across LAB backtests (data-driven runs are ~3× slower at max speed).
 5. Summer leagues (e.g. MLS/Brasileirão desk) so June–July is not dead time.
 6. Real sports provider (`ISportsDataProvider`) and a wall-clock "live" mode.
-7. More drama: tipster arguments/rivalries visible in the office, poaching, bonus schemes, CEO replaced by
-   the board after a disastrous year.
+7. More drama, round two: bonus schemes, mentoring juniors, office romances/feuds that span seasons,
+   journalists covering the company, the board injecting money with strings attached.
 8. Accessibility: keyboard navigation for the office (tab through people), table views for every chart.

@@ -145,6 +145,11 @@ def management(request: Request) -> list[dict[str, Any]]:
     return views.management_view(world_or_404(runner_of(request)))
 
 
+@router.get("/recaps")
+def recaps(request: Request) -> list[dict[str, Any]]:
+    return views.recaps_view(world_or_404(runner_of(request)))
+
+
 @router.get("/summary")
 def summary(request: Request) -> dict[str, Any]:
     return views.summary_view(world_or_404(runner_of(request)))

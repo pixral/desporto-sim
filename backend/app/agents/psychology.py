@@ -126,18 +126,13 @@ def mood_label(emp: Employee) -> str:
 
 
 def resignation_reason(world: World, emp: Employee, distress: float, rng: random.Random) -> str | None:
-    """Rare voluntary exits: burnout, or being poached away from a sinking ship."""
+    """Rare burnout exits. (Being poached by rivals is handled explicitly in simulation/drama.py.)"""
     p, t = emp.psyche, emp.traits
     prob = 0.0
     if p.stress > 0.78:
-        prob += 0.004 * (p.stress - 0.78) / 0.22 * (1 + t.ambitious)
-    poached = p.reputation >= 68 and distress >= 0.45
-    if poached:
-        prob += 0.003 * (0.5 + t.ambitious)
+        prob += 0.004 * (p.stress - 0.78) / 0.22 * (1 + t.ambitious) * (1 + 0.5 * distress)
     if emp.tenure_days(world.today) < 21:
         prob *= 0.2
     if rng.random() >= prob:
         return None
-    if poached and (p.stress <= 0.78 or rng.random() < 0.5):
-        return "accepted an offer from a rival syndicate"
     return "burned out and resigned"

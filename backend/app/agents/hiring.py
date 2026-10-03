@@ -65,7 +65,8 @@ def _initial_psyche(rng: random.Random, traits: Traits, reputation: float = 50.0
 
 
 def _taken_names(world: World) -> set[str]:
-    return {e.name for e in world.employees.values() if e.active} | {c.name for c in world.candidates}
+    """Names stay unique over the company's whole history, so the timeline never confuses two people."""
+    return {e.name for e in world.employees.values()} | {c.name for c in world.candidates}
 
 
 def make_tipster(world: World, rng: random.Random, specialty: str, department_id: str | None,

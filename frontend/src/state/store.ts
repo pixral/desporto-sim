@@ -12,6 +12,8 @@ interface Store {
   showNewRun: boolean;
   summaryDismissedFor: string | null;
   toast: string | null;
+  recapOpen: string | null;
+  setRecapOpen: (id: string | null) => void;
   setState: (s: StateView) => void;
   setConnected: (c: boolean) => void;
   setTab: (t: Tab) => void;
@@ -31,6 +33,8 @@ export const useStore = create<Store>((set) => ({
   showNewRun: false,
   summaryDismissedFor: null,
   toast: null,
+  recapOpen: null,
+  setRecapOpen: (id) => set({ recapOpen: id }),
   setState: (s) => set({ state: s }),
   setConnected: (c) => set({ connected: c }),
   setTab: (t) => set({ tab: t }),

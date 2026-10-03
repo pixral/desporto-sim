@@ -10,6 +10,7 @@ import type {
   Meta,
   RunSummary,
   SaveInfo,
+  SeasonRecap,
 } from "./types";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -41,6 +42,7 @@ export const api = {
   history: (minImportance = 1) => req<HistoryEvent[]>(`/api/history?min_importance=${minImportance}&limit=800`),
   management: () => req<ManagementEntry[]>("/api/management"),
   summary: () => req<RunSummary>("/api/summary"),
+  recaps: () => req<SeasonRecap[]>("/api/recaps"),
   aiCalls: (params: { agent_id?: string; purpose?: string; failures_only?: boolean; limit?: number } = {}) => {
     const q = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => v !== undefined && v !== "" && q.set(k, String(v)));

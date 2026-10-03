@@ -165,6 +165,8 @@ export interface RunSummary {
   strategies_invented: number;
   ai_cost_usd: number;
   ai_calls: number;
+  ceo_changes: number;
+  seasons: number;
 }
 
 export interface StateView {
@@ -201,6 +203,23 @@ export interface StateView {
   lab: { budget: number; running: { id: string; name: string; researcher_id: string; due: string }[]; ready: number };
   today: { matches: number; live: number; finished: number };
   summary: RunSummary | null;
+  latest_recap: { id: string; season: string } | null;
+}
+
+export interface SeasonRecap {
+  id: string;
+  season: string;
+  created: string;
+  awards: { title: string; name: string; employee_id: string | null; value: number; text: string }[];
+  net: number;
+  betting: number;
+  value_start: number;
+  value_end: number;
+  bets: number;
+  hires: number;
+  fires: number;
+  quits: number;
+  headline: string;
 }
 
 export interface PerfStats {
