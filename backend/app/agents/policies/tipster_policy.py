@@ -58,10 +58,10 @@ def decide_day(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
             influence: list[str] = []
             social_w = (0.6 * t["collaborative"] + 0.2 - 0.5 * t["independent"]) * (1 - 0.6 * t["stubborn"])
             for cw in m["coworkers"]:
-                w = (cw["trust"] - 50) / 50 * social_w
+                w = (cw["trust"] - 45) / 40 * social_w
                 if cw["market"] == c["market"]:
                     perceived += 0.02 * w
-                    if 0.02 * w > 0.004:
+                    if 0.02 * w > 0.001:
                         influence.append(cw["name"])
                 elif w > 0:
                     perceived -= 0.008 * w

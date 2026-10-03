@@ -49,7 +49,11 @@ export function Lab() {
         </div>
       </div>
       <div className="panel" style={{ marginTop: 16 }}>
-        <h2 style={{ marginBottom: 10 }}>Experiments</h2>
+        <h2 style={{ marginBottom: 4 }}>Experiments</h2>
+        <div className="muted" style={{ marginBottom: 10 }}>
+          Each idea is backtested on the past year minus the last 4 months, then checked on those 4 months (holdout).
+          Only ideas that also make money on the holdout are recommended for deployment.
+        </div>
         {!done.length ? (
           <div className="empty">No completed experiments yet.</div>
         ) : (
@@ -62,6 +66,7 @@ export function Lab() {
                   <th className="r">Bets</th>
                   <th className="r">ROI</th>
                   <th className="r">Win rate</th>
+                  <th className="r" title="Most recent 4 months, kept out of the main test">Holdout</th>
                   <th>Verdict</th>
                   <th>Status</th>
                 </tr>
@@ -77,6 +82,9 @@ export function Lab() {
                     <td className="r">{x.result?.sample_size ?? "—"}</td>
                     <td className={`r ${tone(x.result?.roi)}`}>{x.result ? pct(x.result.roi, 1, true) : "—"}</td>
                     <td className="r">{x.result ? pct(x.result.win_rate, 0) : "—"}</td>
+                    <td className={`r ${tone(x.holdout?.roi)}`}>
+                      {x.holdout ? `${pct(x.holdout.roi, 1, true)} (${x.holdout.sample_size})` : "—"}
+                    </td>
                     <td>
                       <span className={`pill ${REC_PILL[x.recommendation] ?? "void"}`}>{x.recommendation || "—"}</span>
                     </td>

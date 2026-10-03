@@ -38,9 +38,11 @@ ADJUST_STRATEGY, FREEZE_HIRING, UNFREEZE_HIRING, CUT_SALARIES, TAKE_LOAN, REPAY_
 ### LAB context
 
 Live strategies and their results, past experiments, audit hints and parameter bounds. Output: a named
-hypothesis with strategy parameters. The engine clamps parameters, backtests walk-forward over the last 365
-days, and labels the result DEPLOY / PROMISING / REJECT (bolder researchers accept weaker evidence). Overfitting
-is possible and is part of the drama.
+hypothesis with strategy parameters. The engine clamps parameters and backtests walk-forward over the past
+year **excluding the last 4 months**, then checks those 4 months as an out-of-sample **holdout**. DEPLOY needs a
+strong in-sample result (≥120 bets, ROI ≥ ~4%, drawdown < 30%; bolder researchers accept a bit less) **and** a
+profitable holdout (≥30 bets). Ideas that look great in-sample but lose on fresh data "collapse on fresh data".
+Overfitting is still possible (many ideas are tried), which is part of the drama.
 
 ## Hidden talent
 
@@ -78,6 +80,16 @@ an ambitious risk-seeker swing for the fences.
 | Conservative operator | Small stakes, slow hiring, quick cost cuts, needs big samples. |
 | Aggressive expansionist | Hires and opens desks, raises limits after wins, doubles down and borrows when behind. |
 | Data-driven | Decides on z-scores, sizes desks to evidence, follows the LAB, backtests applicants. |
+
+Shared management rules (all styles, with style-specific thresholds):
+- Firing needs evidence: a bad 90-day record (z-score) **or** a bad career record (e.g. data-driven: ≥150 bets
+  with career z ≤ −2), usually after a warning.
+- **Upgrade swaps**: a proven loser can be replaced by an applicant whose method tests better (LAB backtest for
+  data-driven/conservative CEOs, a shiny CV for the others).
+- **Rebuild**: a company that shrank below a minimum headcount but still has runway hires back (up to 3 per desk)
+  and may reopen a desk, instead of fading out.
+- LAB strategies go only to people who are losing, never twice in one review, and a tipster keeps a strategy at
+  least 60 days (90 for the mock CEO's choice) before it can be swapped again.
 | Chaotic founder | Impulsive firings and hires, random limits, dramatic memos. |
 
 ## Relationships

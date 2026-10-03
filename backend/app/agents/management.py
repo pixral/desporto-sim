@@ -30,6 +30,9 @@ from .catalog import (
 from .hiring import hire_candidate, seed_relationships
 
 
+MIN_STRATEGY_DAYS = 60  # a strategy needs time before it can be judged (and replaced)
+
+
 # ------------------------------------------------------------------ shared helpers
 def free_desk_index(world: World, dept_id: str) -> int | None:
     used = {e.desk_index for e in world.department_members(dept_id)}
@@ -138,6 +141,8 @@ def _fire(ctx: _Ctx, a) -> tuple[bool, str]:
         return False, "no such active employee"
     reason = a.reason or "performance"
     depart(w, e, f"fired: {reason}", fired=True)
+    if reason.startswith("Replaced by"):
+        w.milestones["last_swap"] = w.today.toordinal()
     ctx.fires += 1
     ctx.touched.add(e.id)
     big = e.level >= 2 or e.profit > 150
@@ -362,6 +367,9 @@ def _deploy(ctx: _Ctx, a) -> tuple[bool, str]:
         return False, "no such active tipster"
     if e.strategy_id == exp.strategy_id:
         return False, "already using it"
+    age = e.strategy_age_days(w.today)
+    if age < MIN_STRATEGY_DAYS:
+        return False, f"{e.name} switched strategy only {age} days ago; give it time"
     refuse = 0.5 * e.traits.stubborn * (0.5 if e.under_review else 1.0)
     if ctx.rng.random() < refuse:
         e.psyche.stress = clamp(e.psyche.stress + 0.05, 0.02, 0.98)

@@ -365,6 +365,7 @@ export interface Experiment {
   completed: string | null;
   status: "running" | "completed" | "deployed" | "rejected";
   result: { sample_size: number; roi: number; win_rate: number; max_drawdown_units: number; avg_odds: number } | null;
+  holdout: { sample_size: number; roi: number } | null;
   recommendation: "" | "DEPLOY" | "PROMISING" | "REJECT";
   recommendation_text: string;
   deployed_names: string[];

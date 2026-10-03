@@ -223,6 +223,7 @@ def employee_rows(world: World, days: int = 90) -> list[dict[str, Any]]:
         if e.role == "ceo":
             continue
         p = metrics.period_stats(world, e, days)
+        career = metrics.PerfStats.from_bets(metrics.settled_bets(world, e))
         dept = world.departments.get(e.department_id or "")
         rows.append({
             "id": e.id, "name": e.name, "role": e.role, "title": e.title, "level": e.level,
@@ -230,7 +231,9 @@ def employee_rows(world: World, days: int = 90) -> list[dict[str, Any]]:
             "specialty": SPECIALTIES[e.specialty].label if e.specialty in SPECIALTIES else e.specialty,
             "tenure_days": e.tenure_days(world.today), "salary": e.salary,
             "bets_90d": p.bets, "roi_90d": _r(p.roi), "profit_90d": _r(p.profit, 2), "z_90d": _r(p.z, 2),
-            "career_profit": _r(e.profit, 2), "career_bets": e.bets_total, "no_bet_rate": _r(e.no_bet_rate(), 2),
+            "career_profit": _r(e.profit, 2), "career_bets": career.bets, "career_roi": _r(career.roi),
+            "z_career": _r(career.z, 2), "strategy_age_days": e.strategy_age_days(world.today),
+            "no_bet_rate": _r(e.no_bet_rate(), 2),
             "reputation": _r(e.psyche.reputation, 1), "stress": _r(e.psyche.stress), "confidence": _r(e.psyche.confidence),
             "mood": e.mood, "under_review": e.under_review, "warnings": e.warnings, "streak": e.streak,
         })
@@ -263,6 +266,7 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
         "id": x.id, "name": x.name, "hypothesis": x.hypothesis,
         "sample": x.result.sample_size if x.result else 0, "roi": _r(x.result.roi if x.result else 0),
         "drawdown": _r(x.result.max_drawdown_pct if x.result else 0), "recommendation": x.recommendation,
+        "holdout_roi": _r(x.holdout.roi) if x.holdout else None, "holdout_sample": x.holdout.sample_size if x.holdout else 0,
         "competitions": world.strategies[x.strategy_id].competitions if x.strategy_id in world.strategies else [],
         "markets": world.strategies[x.strategy_id].markets if x.strategy_id in world.strategies else [],
     } for x in world.experiments.values() if x.status == "completed"]
@@ -301,6 +305,7 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
             "roi_90d": _r(p90.roi), "bets_90d": p90.bets,
             "months_since_salary_cut": world.milestones.get("months_since_salary_cut", 99),
             "days_since_desk_closed": world.today.toordinal() - int(world.milestones.get("last_desk_closed", 0)),
+            "days_since_swap": world.today.toordinal() - int(world.milestones.get("last_swap", 0)),
             "monthly_payroll": _r(sum(e.salary for e in world.active_employees()), 2),
         },
         "departments": dept_rows,

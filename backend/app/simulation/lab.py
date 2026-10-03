@@ -20,6 +20,8 @@ from app.domain.world import World
 from . import history, metrics
 
 BACKTEST_DAYS = 365
+HOLDOUT_DAYS = 120
+HOLDOUT_MIN_BETS = 30
 
 
 def _duration_days(budget: float) -> int:
@@ -95,11 +97,19 @@ async def lab_morning(world: World, index: SportsIndex, popular: set[str], gatew
 
 
 def complete_experiment(world: World, index: SportsIndex, popular: set[str], x: Experiment) -> None:
+    """Backtest in-sample, then check the most recent months as an out-of-sample holdout.
+
+    Researchers try many ideas; the best in-sample result is usually partly luck. A strategy is
+    only recommended for deployment if it also holds up on the holdout period.
+    """
     s = world.strategies[x.strategy_id]
+    split = world.today - timedelta(days=HOLDOUT_DAYS)
     res = backtest(index, world.matches.values(), s, popular, start=world.today - timedelta(days=BACKTEST_DAYS),
-                   end=world.today)
+                   end=split)
+    hold = backtest(index, world.matches.values(), s, popular, start=split, end=world.today)
     s.backtest = res
     x.result = res
+    x.holdout = hold
     x.completed = world.today
     x.status = "completed"
     world.stats.experiments_run += 1
@@ -108,24 +118,31 @@ def complete_experiment(world: World, index: SportsIndex, popular: set[str], x: 
     if r is not None:
         boldness = 0.5 * r.traits.risk_seeking + 0.3 * r.traits.ambitious - 0.4 * r.traits.skeptical
     n, roi, dd = res.sample_size, res.roi, res.max_drawdown_pct
-    if n >= 150 and roi >= 0.04 - 0.015 * boldness and dd < 0.3:
+    holds = hold.sample_size >= HOLDOUT_MIN_BETS and hold.roi > 0.0
+    if n >= 120 and roi >= 0.04 - 0.015 * boldness and dd < 0.3 and holds:
         x.recommendation = "DEPLOY"
-    elif n >= 40 and roi > 0.0:
+    elif n >= 40 and roi > 0.0 and (hold.sample_size < 20 or hold.roi > -0.03):
         x.recommendation = "PROMISING"
     else:
         x.recommendation = "REJECT"
-    x.recommendation_text = (f"{n} bets, ROI {roi:+.1%}, win rate {res.win_rate:.0%}, "
-                             f"max drawdown {res.max_drawdown_units:.1f} units.")
+    x.recommendation_text = (f"In-sample {n} bets, ROI {roi:+.1%}, win rate {res.win_rate:.0%}, "
+                             f"max drawdown {res.max_drawdown_units:.1f} units. Holdout {hold.sample_size} bets, "
+                             f"ROI {hold.roi:+.1%}.")
     who = [x.researcher_id] if r else []
     if x.recommendation == "REJECT":
         x.status = "rejected"
-        history.record(world, "experiment_failed", f"LAB: '{x.name}' does not survive testing",
+        failed_on_holdout = n >= 120 and roi >= 0.03 and not holds
+        history.record(world, "experiment_failed",
+                       f"LAB: '{x.name}' {'collapses on fresh data' if failed_on_holdout else 'does not survive testing'}",
                        x.recommendation_text, 1, "neutral", who)
     else:
         world.stats.strategies_invented += 1
-        history.record(world, "strategy_invented",
-                       f"LAB invents '{x.name}' ({x.recommendation.lower()})", f"{x.hypothesis} {x.recommendation_text}",
-                       3 if x.recommendation == "DEPLOY" and roi >= 0.05 and n >= 200 else 2, "good", who)
+        breakthrough = x.recommendation == "DEPLOY" and roi >= 0.05 and n >= 200 and hold.roi >= 0.03
+        importance = 3 if breakthrough else 2 if x.recommendation == "DEPLOY" else 1
+        title = (f"LAB breakthrough: '{x.name}'" if breakthrough
+                 else f"LAB invents '{x.name}' ({x.recommendation.lower()})")
+        history.record(world, "strategy_invented", title, f"{x.hypothesis} {x.recommendation_text}",
+                       importance, "good", who)
 
 
 def _odds_bucket(odds: float) -> str:

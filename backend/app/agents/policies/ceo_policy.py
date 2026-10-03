@@ -17,25 +17,25 @@ STYLES: dict[str, dict[str, float]] = {
         hire_runway=14, target_per_desk=2, stake_base=0.035, stake_max=0.055, expand_prob=0.12,
         lab_budget=45, marketing=50, cut_runway=6, cut_prob=0.8, freeze_runway=8, loan_appetite=0.0,
         close_roi=-0.06, close_prob=0.7, randomness=0.04, double_down=0.0, follow_lab=0.5, min_lab_sample=150,
-        max_promotions=1),
+        max_promotions=1, career_min_bets=120, career_fire_z=-1.8, rebuild_min=4, swap_prob=0.6),
     "aggressive_expansionist": dict(
         fire_z=-2.0, fire_min_bets=50, needs_warning=1, warn_z=-1.3, promote_z=1.0, promote_min_bets=50,
         hire_runway=6, target_per_desk=3, stake_base=0.065, stake_max=0.12, expand_prob=0.55,
         lab_budget=70, marketing=170, cut_runway=1.5, cut_prob=0.15, freeze_runway=2.5, loan_appetite=0.9,
         close_roi=-0.15, close_prob=0.3, randomness=0.12, double_down=0.6, follow_lab=0.6, min_lab_sample=60,
-        max_promotions=2),
+        max_promotions=2, career_min_bets=200, career_fire_z=-2.5, rebuild_min=6, swap_prob=0.3),
     "data_driven": dict(
         fire_z=-1.6, fire_min_bets=80, needs_warning=1, warn_z=-1.0, promote_z=1.8, promote_min_bets=100,
         hire_runway=10, target_per_desk=2, stake_base=0.05, stake_max=0.08, expand_prob=0.35,
         lab_budget=110, marketing=80, cut_runway=4, cut_prob=0.6, freeze_runway=5, loan_appetite=0.25,
         close_roi=-0.08, close_prob=0.8, randomness=0.03, double_down=0.0, follow_lab=1.0, min_lab_sample=100,
-        max_promotions=1),
+        max_promotions=1, career_min_bets=150, career_fire_z=-2.0, rebuild_min=5, swap_prob=0.9),
     "chaotic_founder": dict(
         fire_z=-1.0, fire_min_bets=25, needs_warning=0, warn_z=-0.5, promote_z=0.8, promote_min_bets=30,
         hire_runway=7, target_per_desk=3, stake_base=0.055, stake_max=0.12, expand_prob=0.15,
         lab_budget=60, marketing=120, cut_runway=3, cut_prob=0.5, freeze_runway=3, loan_appetite=0.7,
         close_roi=-0.05, close_prob=0.5, randomness=0.35, double_down=0.45, follow_lab=0.3, min_lab_sample=30,
-        max_promotions=2),
+        max_promotions=2, career_min_bets=80, career_fire_z=-1.2, rebuild_min=5, swap_prob=0.4),
 }
 
 
@@ -84,15 +84,18 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
     # ---- performance management -----------------------------------------------------------
     fired: set[str] = set()
     max_fires = limits["max_fires"]
-    for e in sorted(tipsters, key=lambda x: x["z_90d"]):
+    for e in sorted(tipsters, key=lambda x: min(x["z_90d"], x["z_career"])):
         if len(fired) >= max_fires:
             break
         enough = e["bets_90d"] >= st["fire_min_bets"]
         bad = e["z_90d"] <= st["fire_z"] or (enough and e["roi_90d"] < -0.12)
+        career_bad = e["career_bets"] >= st["career_min_bets"] and e["z_career"] <= st["career_fire_z"]
         warned = e["under_review"] or not st["needs_warning"]
-        if enough and bad and warned and (scope == "monthly" or e["z_90d"] <= st["fire_z"] - 0.8):
-            plan.add("FIRE", f"ROI {e['roi_90d']:+.1%} over {e['bets_90d']} bets (z {e['z_90d']:+.1f}) after a warning.",
-                     employee_id=e["id"])
+        if ((enough and bad) or career_bad) and warned and (scope == "monthly" or e["z_90d"] <= st["fire_z"] - 0.8):
+            why = (f"ROI {e['career_roi']:+.1%} over {e['career_bets']} career bets (z {e['z_career']:+.1f}): not bad luck."
+                   if career_bad and not (enough and bad)
+                   else f"ROI {e['roi_90d']:+.1%} over {e['bets_90d']} bets (z {e['z_90d']:+.1f}) after a warning.")
+            plan.add("FIRE", why, employee_id=e["id"])
             fired.add(e["id"])
     if scope == "monthly" and in_trouble and not fired and len(tipsters) > 4:
         worst = min(tipsters, key=lambda x: x["z_90d"])
@@ -111,9 +114,13 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         if not e["under_review"]:
             if e["bets_90d"] >= st["fire_min_bets"] * 0.5 and e["z_90d"] <= st["warn_z"] - (0.6 if scope == "weekly" else 0):
                 plan.add("WARN", f"ROI {e['roi_90d']:+.1%} over {e['bets_90d']} bets is not acceptable.", employee_id=e["id"])
+            elif (scope == "monthly" and e["career_bets"] >= st["career_min_bets"] * 0.7
+                  and e["z_career"] <= st["career_fire_z"] + 0.5):
+                plan.add("WARN", f"Career ROI {e['career_roi']:+.1%} over {e['career_bets']} bets. This has to change.",
+                         employee_id=e["id"])
             elif scope == "monthly" and e["no_bet_rate"] > 0.92 and e["tenure_days"] > 45:
                 plan.add("WARN", "You pass on almost everything. We pay you to find bets.", employee_id=e["id"])
-        elif e["z_90d"] > 0.2 and e["no_bet_rate"] <= 0.92:
+        elif e["z_90d"] > 0.2 and e["no_bet_rate"] <= 0.92 and e["z_career"] > st["career_fire_z"] + 0.5:
             plan.add("CLEAR_REVIEW", "Numbers have recovered. Back to normal.", employee_id=e["id"])
 
     if scope == "monthly":
@@ -195,6 +202,7 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
 
         # ---- LAB ------------------------------------------------------------------------
         deployed = 0
+        taken: set[str] = set()
         for x in sorted(ctx["lab"]["ready"], key=lambda r: -r["roi"]):
             if deployed >= (2 if style == "data_driven" else 1):
                 break
@@ -204,10 +212,12 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
             willing = willing or (style == "chaotic_founder" and rng.random() < 0.35)
             if not willing or rng.random() > st["follow_lab"] + 0.2:
                 continue
-            target = _deploy_target(ctx, x, fired)
+            target = _deploy_target(ctx, x, fired | taken, rng if style == "chaotic_founder" else None)
             if target:
-                plan.add("DEPLOY_STRATEGY", f"LAB result: ROI {x['roi']:+.1%} on {x['sample']} bets.",
+                hold = f", holdout {x['holdout_roi']:+.1%}" if x.get("holdout_roi") is not None else ""
+                plan.add("DEPLOY_STRATEGY", f"LAB result: ROI {x['roi']:+.1%} on {x['sample']} bets{hold}.",
                          experiment_id=x["id"], employee_id=target)
+                taken.add(target)
                 deployed += 1
         for a in ctx["lab"]["audit"]:
             if a["field"] and a["bets"] >= 25 and a["roi"] < -0.15 and rng.random() < st["follow_lab"] * 0.8:
@@ -218,15 +228,20 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         # ---- hiring ---------------------------------------------------------------------
         frozen = co["hiring_frozen"] or plan.count("FREEZE_HIRING") > 0
         avg_salary = co["monthly_payroll"] / max(len(ctx["employees"]) + 1, 1)
-        can_afford = co["cash"] > 3 * avg_salary and rw >= st["hire_runway"] and not in_trouble
+        liquid = co["cash"] + co["bankroll"]
+        staying = [t for t in tipsters if t["id"] not in fired]
+        # a company that shrank but still has money and time rebuilds instead of slowly fading
+        rebuild = len(staying) < st["rebuild_min"] and not in_trouble and rw >= 12 and liquid > costs * 6
+        can_afford = (co["cash"] > 3 * avg_salary or rebuild) and rw >= st["hire_runway"] and not in_trouble
+        per_desk = 3 if rebuild else st["target_per_desk"]
         hires = 0
         used: set[str] = set()
-        if not frozen and co["cash"] > 3 * avg_salary:
+        if not frozen and liquid > costs * 2:
             needy = []
             for d in depts:
                 remaining = d["headcount"] - sum(1 for e in tipsters if e["department_id"] == d["id"] and e["id"] in fired)
                 # an empty desk wastes its bankroll: restaff it even when money is tight
-                if remaining == 0 or (can_afford and remaining < min(st["target_per_desk"], limits["max_desk_size"])):
+                if remaining == 0 or (can_afford and remaining < min(per_desk, limits["max_desk_size"])):
                     needy.append((remaining, d))
             needy.sort(key=lambda x: (x[0], -x[1]["profit_90d"]))
             for _, d in needy:
@@ -234,7 +249,18 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
                     break
                 cand = _pick_candidate(ctx, d, style, rng, used)
                 if cand:
-                    plan.add("HIRE", f"Strengthening the {d['name']}.", candidate_id=cand["id"], department_id=d["id"])
+                    why = "Rebuilding the team." if rebuild else f"Strengthening the {d['name']}."
+                    plan.add("HIRE", why, candidate_id=cand["id"], department_id=d["id"])
+                    used.add(cand["id"])
+                    hires += 1
+            # upgrade: replace a proven loser with an applicant whose method tests better
+            if hires < limits["max_hires"] and len(fired) < max_fires and rng.random() < st["swap_prob"]:
+                swap = _upgrade_swap(ctx, style, fired, used)
+                if swap:
+                    weak, cand, dept_id = swap
+                    plan.add("FIRE", f"Replaced by a stronger candidate ({cand['name']}).", employee_id=weak["id"])
+                    plan.add("HIRE", f"Upgrade over {weak['name']}.", candidate_id=cand["id"], department_id=dept_id)
+                    fired.add(weak["id"])
                     used.add(cand["id"])
                     hires += 1
             lab = ctx["lab"]
@@ -257,6 +283,16 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
                 kind = rng.choice(kinds)
                 plan.add("CREATE_DEPARTMENT", f"Opening a {kind['name']} — new markets, new edges.",
                          department_kind=kind["kind"], amount=round(amount, 0))
+        elif kinds and rebuild and limits["desks"] < 3 and not frozen and depts and rng.random() < 0.35:
+            amount = round(min(1500.0, liquid - costs * 4), 0)
+            if amount >= 600:
+                richest = max(depts, key=lambda d: d["bankroll"])
+                if co["cash"] < amount + costs:  # free up cash from the biggest bankroll first
+                    plan.add("WITHDRAW_BANKROLL", "Funding a fresh start.", department_id=richest["id"],
+                             amount=round(min(richest["bankroll"] * 0.5, amount + costs - co["cash"]), 0))
+                kind = rng.choice(kinds)
+                plan.add("CREATE_DEPARTMENT", f"Reopening with a {kind['name']}: we need more shots on goal.",
+                         department_kind=kind["kind"], amount=amount)
         cooldown_ok = co["days_since_desk_closed"] >= 120
         closable = [d for d in depts if d["bets_90d"] >= 60 and d["roi_90d"] < st["close_roi"] and d["z_90d"] <= -1.5
                     and d["profit_90d"] < -200 and d["age_days"] >= 120]
@@ -275,14 +311,63 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
             "actions": plan.actions}
 
 
-def _deploy_target(ctx: dict[str, Any], x: dict[str, Any], fired: set[str]) -> str | None:
+def _deploy_target(ctx: dict[str, Any], x: dict[str, Any], excluded: set[str],
+                   rng: random.Random | None = None) -> str | None:
+    """Who should switch to a LAB strategy: someone losing, whose current method had time to show it."""
     comps = set(x["competitions"])
     dept_comps = {d["id"]: set(d["competitions"]) for d in ctx["departments"]}
-    pool = [e for e in ctx["employees"] if e["role"] == "tipster" and e["id"] not in fired
+    pool = [e for e in ctx["employees"] if e["role"] == "tipster" and e["id"] not in excluded
+            and e["strategy_age_days"] >= 90
             and (not comps or comps & dept_comps.get(e["department_id"], set()))]
-    if not pool:
+    if rng is not None:  # the chaotic founder hands it to whoever he bumps into
+        return rng.choice(pool)["id"] if pool else None
+    losing = [e for e in pool if (e["bets_90d"] >= 30 and e["z_90d"] < -0.3)
+              or (e["career_bets"] >= 80 and e["career_roi"] < 0)]
+    if not losing:
         return None
-    return min(pool, key=lambda e: (e["z_90d"] if e["bets_90d"] >= 20 else 0.0))["id"]
+    return min(losing, key=lambda e: e["z_90d"])["id"]
+
+
+SWAP_PRIOR_BETS = 300  # shrinkage: a record needs a few hundred bets before it is believed
+SWAP_MIN_GAP = 0.025  # required gap in *expected* ROI after shrinkage
+
+
+def _shrunk(roi: float | None, n: int | None) -> float:
+    """Expected future ROI: past ROI pulled towards zero by how little evidence there is."""
+    if roi is None or not n:
+        return 0.0
+    return roi * n / (n + SWAP_PRIOR_BETS)
+
+
+def _upgrade_swap(ctx: dict[str, Any], style: str, fired: set[str],
+                  used: set[str]) -> tuple[dict[str, Any], dict[str, Any], str] | None:
+    """Find (weak tipster, better applicant, desk) for a like-for-like replacement, if the evidence supports it.
+
+    Choosing the best of several backtests mostly selects luck (winner's curse), so every record is shrunk
+    towards zero before comparing, and swaps happen at most once a quarter.
+    """
+    if ctx["company"].get("days_since_swap", 999) < 90:
+        return None
+    weak = [t for t in ctx["employees"] if t["role"] == "tipster" and t["id"] not in fired and t["department_id"]
+            and t["tenure_days"] >= 120 and t["career_bets"] >= 100 and t["z_career"] <= -1.0]
+    depts = {d["id"]: d for d in ctx["departments"]}
+    for t in sorted(weak, key=lambda t: t["z_career"]):
+        dept = depts.get(t["department_id"])
+        if dept is None:
+            continue
+        pool = [c for c in ctx["candidates"] if c["role"] == "tipster" and c["id"] not in used
+                and c["specialty"] in dept.get("preferred_specialties", [])]
+        mine = _shrunk(t["career_roi"], t["career_bets"])
+        if style in ("data_driven", "conservative_operator"):
+            pool = [c for c in pool if (c.get("lab_backtest_n") or 0) >= 100
+                    and _shrunk(c.get("lab_backtest_roi"), c.get("lab_backtest_n")) - mine >= SWAP_MIN_GAP]
+            best = max(pool, key=lambda c: _shrunk(c.get("lab_backtest_roi"), c.get("lab_backtest_n")), default=None)
+        else:  # gut feel: a shiny CV
+            best = max((c for c in pool if c["cv_rating"] >= (80 if style == "aggressive_expansionist" else 65)),
+                       key=lambda c: c["cv_rating"], default=None)
+        if best:
+            return t, best, dept["id"]
+    return None
 
 
 def _pick_candidate(ctx: dict[str, Any], dept: dict[str, Any], style: str, rng: random.Random,

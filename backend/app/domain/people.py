@@ -172,6 +172,14 @@ class Employee(Model):
     def add_career(self, day: date, kind: str, text: str) -> None:
         self.career.append(CareerEntry(day=day, kind=kind, text=text))
 
+    def strategy_age_days(self, today: date) -> int:
+        """Days since this person last switched strategy (or since they were hired)."""
+        last = self.hired
+        for c in self.career:
+            if c.kind == "strategy" and c.text.startswith("Switched"):
+                last = max(last, c.day)
+        return (today - last).days
+
 
 class Candidate(Model):
     """A job applicant in the hiring pool. Their true quality is unknown to everyone."""

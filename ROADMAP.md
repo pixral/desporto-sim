@@ -13,9 +13,18 @@
   viewer, Saves, New company dialog, bankruptcy end screen. 9 tests (layout reachability, actor behaviour).
 - Docs: README, ARCHITECTURE, SIMULATION_RULES, AGENT_MODEL, ECONOMY, DECISIONS. Launcher: `start.ps1`.
 
+## Done since (2026-10-03, evening)
+
+From a real run that "went downhill": CEO now fires on career evidence too, rebuilds a shrunken company,
+and replaces proven losers with better-tested applicants (with winner's-curse shrinkage and a quarterly limit);
+LAB requires an out-of-sample holdout before recommending deployment; strategies go only to losing tipsters,
+never twice per review, with a 60-day cooldown (fixed a double-deploy bug); "promising" LAB results no longer
+flood the history; colleague influence and desk familiarity actually happen now. 44 backend tests.
+
 ## Next
 
 1. Visual polish pass with fresh eyes on a long run (label overlap at small zoom, crowded Bench).
+   Also show colleague influence and refusals visibly in the office (speech lines between desks).
 2. Run a short real Claude session (a few simulated days) to check prompt quality and cost per day.
 3. Performance: cache team ratings across LAB backtests (data-driven runs are ~3× slower at max speed).
 4. Economy tuning: slightly more upside for well-run companies; difficulty presets in the New company dialog.

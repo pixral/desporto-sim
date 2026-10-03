@@ -58,13 +58,16 @@ starting capital, 10 % in distress, nothing when insolvent). Every emergency is 
 Runway = (cash + bankrolls − payables − debt) / average monthly net burn of the last 3 closed months
 (estimated fixed costs before the first close).
 
-## Calibration snapshot (24 runs × 2 years, mock AI)
+## Calibration snapshot (24 runs × 2 years, mock AI, after the CEO/LAB fixes)
 
 | CEO style | Bankrupt | Median value after 2 years |
 |---|---|---|
-| Conservative operator | 0/6 | €13.1k |
-| Aggressive expansionist | 3/6 | €4.4k (peaks up to €53k) |
-| Data-driven | 0/6 | €10.9k (peaks up to €57k) |
-| Chaotic founder | 0/6 | €10.2k (peaks up to €64k) |
+| Conservative operator | 0/6 | €9.9k |
+| Aggressive expansionist | 2/6 | €5.0k (peaks up to €62k) |
+| Data-driven | 0/6 | €9.5k (best run €21.9k) |
+| Chaotic founder | 1/6 | €4.7k |
+
+Most companies drift down over two years from €20k; a minority grow. Giving well-run companies more upside is
+an open roadmap item.
 
 Re-run with `python -m app.tools.batch --days 730 --seeds 1 2 3 4 5 6 --styles all`.

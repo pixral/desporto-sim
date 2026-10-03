@@ -20,7 +20,8 @@ class Experiment(Model):
     due: date
     completed: date | None = None
     status: Literal["running", "completed", "deployed", "rejected"] = "running"
-    result: BacktestResult | None = None
+    result: BacktestResult | None = None  # in-sample period
+    holdout: BacktestResult | None = None  # most recent months, kept out of the main test
     recommendation: Literal["", "DEPLOY", "PROMISING", "REJECT"] = ""
     recommendation_text: str = ""
     deployed_to: list[str] = Field(default_factory=list)

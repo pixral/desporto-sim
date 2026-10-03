@@ -40,7 +40,10 @@ def monthly_update(world: World, perf_roi: dict[str, float], perf_bets: dict[str
             if same_dept and a.role == b.role == "tipster":
                 rel.rivalry = clamp(rel.rivalry + 1.5 * a.traits.ambitious, 0, 100)
             rel.rivalry *= 0.92
-            rel.trust += 0.05 * (50 - rel.trust)  # slow regression to neutral
+            # trust drifts towards what people's results have earned (respect), damped by rivalry;
+            # sitting at the same desk every day builds familiarity
+            anchor = 50 + 0.6 * (rel.respect - 50) - 0.3 * rel.rivalry + (6 if same_dept else 0)
+            rel.trust += 0.08 * (anchor - rel.trust)
             rel.trust = clamp(rel.trust, 0, 100)
 
 
