@@ -9,6 +9,7 @@ from app.domain.base import clamp
 from app.domain.people import Candidate, Employee, Psyche, Relationship, Traits
 from app.domain.strategy import PARAM_BOUNDS, Strategy
 from app.domain.world import World
+from app.economy.config import preset
 
 from .catalog import (
     CEO_SALARY,
@@ -22,6 +23,11 @@ from .catalog import (
 from .names import CEO_NAMES, random_appearance, random_traits, unique_name
 
 _XG_RANGE = {"statistical": (0.35, 1.0), "goals": (0.2, 1.0), "form": (0.0, 0.85)}
+
+
+def pay(world: World, base: float) -> float:
+    """A salary at this run's cost level."""
+    return round(base * preset(world.config.difficulty)["cost_mult"], 0)
 
 
 def _clamp_param(name: str, value: float) -> float:
@@ -80,7 +86,7 @@ def make_tipster(world: World, rng: random.Random, specialty: str, department_id
         traits=traits,
         psyche=_initial_psyche(rng, traits),
         appearance=random_appearance(rng),
-        salary=salary if salary is not None else LEVEL_SALARY[level],
+        salary=salary if salary is not None else pay(world, LEVEL_SALARY[level]),
         hired=world.today,
         strategy_id=strategy_id,
         bankroll_weight=LEVEL_BANKROLL_WEIGHT[level],
@@ -104,7 +110,7 @@ def make_researcher(world: World, rng: random.Random, specialty: str, department
         traits=traits,
         psyche=_initial_psyche(rng, traits),
         appearance=random_appearance(rng),
-        salary=salary if salary is not None else RESEARCHER_SALARY,
+        salary=salary if salary is not None else pay(world, RESEARCHER_SALARY),
         hired=world.today,
     )
     emp.add_career(world.today, "hired", f"Joined the LAB as {SPECIALTIES[specialty].label}.")
@@ -129,7 +135,7 @@ def make_ceo(world: World, rng: random.Random, style: str) -> Employee:
         traits=traits,
         psyche=_initial_psyche(rng, traits, reputation=60.0),
         appearance=random_appearance(rng),
-        salary=CEO_SALARY,
+        salary=pay(world, CEO_SALARY),
         hired=world.today,
         ceo_style=style,
     )
@@ -179,7 +185,7 @@ def generate_candidates(world: World, rng: random.Random, count: int, kinds: lis
             quality_hint = strat.xg_weight
         experience = rng.randint(0, 12)
         cv = int(clamp(45 + rng.gauss(0, 15) + 18 * (quality_hint - 0.5) + experience * 1.2, 5, 98))
-        base = RESEARCHER_SALARY if role == "researcher" else LEVEL_SALARY[1]
+        base = pay(world, RESEARCHER_SALARY if role == "researcher" else LEVEL_SALARY[1])
         salary_ask = round(base * (0.75 + cv / 160 + rng.uniform(-0.05, 0.1)), 0)
         pitch = rng.choice([
             "Has a spreadsheet for everything.",

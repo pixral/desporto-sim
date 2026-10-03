@@ -106,5 +106,28 @@ def test_subscribers_react_to_track_record(fresh):
     world, _, _ = fresh()
     world.finances.subscribers = 100
     gained, lost, revenue = accounting.subscriptions_update(world)  # no bets yet: neutral track record
-    assert lost == round(100 * EC.SUB_BASE_CHURN)
+    assert lost == round(100 * EC.preset("normal")["sub_churn"])
     assert revenue == world.finances.subscribers * world.finances.subscription_price
+
+
+def test_difficulty_presets_change_the_economy_not_the_football():
+    from datetime import date
+
+    from app.domain.world import RunConfig
+    from app.providers import make_sports_provider
+    from app.simulation.factory import create_world
+
+    worlds = {}
+    for level in ("easy", "hard"):
+        cfg = RunConfig(seed=4, difficulty=level, starting_capital=EC.preset(level)["capital"])
+        worlds[level] = create_world(cfg, make_sports_provider(cfg))
+    easy, hard = worlds["easy"], worlds["hard"]
+    assert easy.config.starting_capital > hard.config.starting_capital
+    assert easy.finances.subscribers > hard.finances.subscribers
+    pay = lambda w: sum(e.salary for e in w.active_employees())
+    assert pay(hard) > pay(easy)
+    assert val.estimated_operating_cost(hard) > val.estimated_operating_cost(easy)
+    # same seed, same results; only the bookmakers' sharpness differs
+    first = lambda w: sorted((m.id, m.home_goals, m.away_goals) for m in w.matches.values())[:300]
+    assert first(easy) == first(hard)
+    assert date(2026, 8, 14) == easy.config.start_date

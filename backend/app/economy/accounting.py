@@ -20,11 +20,12 @@ from . import valuation as val
 def accrue_daily_costs(world: World) -> float:
     """Accrue one day of fixed costs into payables (paid at month close). Returns the amount."""
     f = world.finances
+    mult = C.preset(world.config.difficulty)["cost_mult"]
     active = world.active_employees()
     salaries = sum(e.salary for e in active) / 30.0
-    rent = (C.RENT_BASE + C.RENT_PER_HEAD * len(active)) / 30.0
+    rent = mult * (C.RENT_BASE + C.RENT_PER_HEAD * len(active)) / 30.0
     comps = {c for d in world.active_departments() for c in d.competitions}
-    data = C.DATA_PER_COMPETITION * len(comps) / 30.0
+    data = mult * C.DATA_PER_COMPETITION * len(comps) / 30.0
     marketing = f.marketing_budget / 30.0
     lab = f.lab_budget / 30.0
     for target in (f.month, f.totals):
@@ -177,9 +178,10 @@ def subscriptions_update(world: World) -> tuple[int, int, float]:
     f = world.finances
     perf = metrics.company_stats(world, 90)
     track = perf.roi if perf.bets >= 30 else 0.0
-    churn = clamp(C.SUB_BASE_CHURN - 0.6 * track, 0.025, 0.30)
+    p = C.preset(world.config.difficulty)
+    churn = clamp(p["sub_churn"] - 0.6 * track, 0.025, 0.30)
     quality = 1.0 + clamp(track * 6, -0.5, 0.6)
-    new = C.SUB_ACQUISITION * math.sqrt(max(f.marketing_budget, 0.0)) * quality
+    new = p["sub_acq"] * math.sqrt(max(f.marketing_budget, 0.0)) * quality
     lost = round(f.subscribers * churn)
     gained = round(new)
     f.subscribers = max(0, f.subscribers - lost + gained)

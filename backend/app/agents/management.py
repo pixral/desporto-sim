@@ -27,7 +27,7 @@ from .catalog import (
     MAX_DESK_SIZE,
     TIPSTER_TITLES,
 )
-from .hiring import hire_candidate, seed_relationships
+from .hiring import hire_candidate, pay, seed_relationships
 
 
 MIN_STRATEGY_DAYS = 60  # a strategy needs time before it can be judged (and replaced)
@@ -192,7 +192,7 @@ def _promote(ctx: _Ctx, a) -> tuple[bool, str]:
         return False, "the desk already has a head"
     e.level += 1
     e.title = TIPSTER_TITLES[e.level]
-    e.salary = round(max(e.salary * 1.2, LEVEL_SALARY[e.level]), 0)
+    e.salary = round(max(e.salary * 1.2, pay(w, LEVEL_SALARY[e.level])), 0)
     e.bankroll_weight = LEVEL_BANKROLL_WEIGHT[e.level]
     e.promotions += 1
     e.psyche.reputation = clamp(e.psyche.reputation + 5, 0, 100)

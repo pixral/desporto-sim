@@ -29,6 +29,7 @@ class RunConfig(Model):
     start_date: date = date(2026, 8, 14)
     starting_capital: float = 20000.0
     initial_tipsters: int = 8
+    difficulty: str = "normal"
     sports_provider: str = "mock"
     ai_provider: str = "mock"
 

@@ -17,14 +17,27 @@ Constants live in `backend/app/economy/config.py`. Everything is in fictional "s
 
 ## Founding (defaults)
 
-€20,000 capital: 70 % split across four desks (Germany, Premier League, Europe, Markets), 30 % cash.
-8 tipsters (random levels), 1 LAB researcher, a CEO. 50 subscribers.
+Capital from the difficulty preset (Normal €20,000): 70 % split across four desks (Germany, Premier League,
+Europe, Markets), 30 % cash. 8 tipsters (random levels), 1 LAB researcher, a CEO.
+
+## Difficulty presets
+
+| | Easy | Normal | Hard |
+|---|---|---|---|
+| Starting capital | €30,000 | €20,000 | €14,000 |
+| Salaries, rent, data feeds | ×0.85 | ×0.95 | ×1.10 |
+| Starting subscribers | 75 | 65 | 45 |
+| Subscriber acquisition / base churn | 0.50 / 6 % | 0.45 / 6.5 % | 0.38 / 7.5 % |
+| Bookmakers' use of xG | −0.15 (softer) | −0.06 | +0.08 (sharper) |
+
+The football (fixtures, results, news) is identical across difficulties for a given seed; only prices and the
+company's economics change. Presets live in `economy/config.py` (`DIFFICULTY`).
 
 ## Costs (accrued daily, paid on the 1st)
 
 | Line | Default |
 |---|---|
-| Salaries | junior €42, tipster €52, senior €68, head €88, researcher €58, CEO €95 per month (hires negotiate) |
+| Salaries | junior €42, tipster €52, senior €68, head €88, researcher €58, CEO €95 per month × difficulty cost multiplier (hires negotiate) |
 | Bonuses | 10 % of a tipster's positive monthly profit |
 | Severance | 1 month of salary when fired |
 | Rent | €60 + €8 per employee |
@@ -37,8 +50,8 @@ Constants live in `backend/app/economy/config.py`. Everything is in fictional "s
 ## Revenue
 
 - **Betting P&L** (into desk bankrolls).
-- **Subscriptions** (cash, monthly): price €12. Churn = 7 % − 0.6 × company 90-day ROI (clamped 2.5–30 %).
-  New subscribers = 0.4 × √marketing × (1 + clamp(6 × ROI, −0.5, +0.6)). The public track record matters.
+- **Subscriptions** (cash, monthly): price €12. Churn = base churn − 0.6 × company 90-day ROI (clamped 2.5–30 %).
+  New subscribers = acquisition × √marketing × (1 + clamp(6 × ROI, −0.5, +0.6)). The public track record matters.
 
 ## Liquidity
 
@@ -58,16 +71,16 @@ starting capital, 10 % in distress, nothing when insolvent). Every emergency is 
 Runway = (cash + bankrolls − payables − debt) / average monthly net burn of the last 3 closed months
 (estimated fixed costs before the first close).
 
-## Calibration snapshot (24 runs × 2 years, mock AI, after the CEO/LAB fixes)
+## Calibration snapshot (2 years, mock AI)
 
-| CEO style | Bankrupt | Median value after 2 years |
-|---|---|---|
-| Conservative operator | 0/6 | €9.9k |
-| Aggressive expansionist | 2/6 | €5.0k (peaks up to €62k) |
-| Data-driven | 0/6 | €9.5k (best run €21.9k) |
-| Chaotic founder | 1/6 | €4.7k |
+Normal and Hard: 16 seeds per CEO style; Easy: 6 seeds per style (before the final preset tweak).
 
-Most companies drift down over two years from €20k; a minority grow. Giving well-run companies more upside is
-an open roadmap item.
+| CEO style | Easy: bankrupt / median value (from €30k) | Normal: bankrupt / grew / mean value (from €20k) | Hard: bankrupt / grew (from €14k) |
+|---|---|---|---|
+| Conservative operator | 0/6 · €36.6k | 0/16 · 7/16 · €21.1k | 0/16 · 0/16 |
+| Aggressive expansionist | 0/6 · €33.7k | 4/16 · 5/16 · €20.4k | 12/16 · 2/16 |
+| Data-driven | 0/6 · €41.3k | 0/16 · 7/16 · €23.9k | 5/16 · 1/16 |
+| Chaotic founder | 0/6 · €30.9k | 1/16 · 6/16 · €21.2k | 9/16 · 0/16 |
 
-Re-run with `python -m app.tools.batch --days 730 --seeds 1 2 3 4 5 6 --styles all`.
+Easy is forgiving, Normal is a coin flip that rewards good management, Hard is a survival game.
+Re-run with `python -m app.tools.batch --days 730 --seeds 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 --styles all --difficulty normal --quiet`.

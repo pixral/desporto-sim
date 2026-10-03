@@ -6,13 +6,14 @@ from app.ai.mock_provider import MockAgentModelProvider
 from app.ai.provider import IAgentModelProvider
 from app.config import Settings
 from app.domain.world import RunConfig
+from app.economy.config import preset
 from app.sports.mock_provider import MockSportsDataProvider
 from app.sports.provider import ISportsDataProvider
 
 
 def make_sports_provider(config: RunConfig) -> ISportsDataProvider:
     if config.sports_provider == "mock":
-        return MockSportsDataProvider(seed=config.seed)
+        return MockSportsDataProvider(seed=config.seed, xg_offset=preset(config.difficulty)["market_xg"])
     raise ValueError(f"unknown sports provider '{config.sports_provider}' (only 'mock' is implemented)")
 
 

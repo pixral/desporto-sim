@@ -35,8 +35,9 @@ def estimated_operating_cost(world: World) -> float:
     payroll = sum(e.salary for e in world.active_employees())
     heads = len(world.active_employees())
     comps = {c for d in world.active_departments() for c in d.competitions}
-    return payroll + C.RENT_BASE + C.RENT_PER_HEAD * heads + C.DATA_PER_COMPETITION * len(comps) \
-        + f.marketing_budget + f.lab_budget
+    mult = C.preset(world.config.difficulty)["cost_mult"]
+    fixed = C.RENT_BASE + C.RENT_PER_HEAD * heads + C.DATA_PER_COMPETITION * len(comps)
+    return payroll + mult * fixed + f.marketing_budget + f.lab_budget
 
 
 def monthly_burn(world: World) -> float:

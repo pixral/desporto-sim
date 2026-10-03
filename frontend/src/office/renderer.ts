@@ -3,6 +3,7 @@
 
 import type { EmployeeCard, StateView } from "../api/types";
 import { ActorWorld, type Actor } from "./actors";
+import { BURST_MS, Drama, LINK_MS, SHOUT_MS } from "./drama";
 import {
   INNER_WALL_H,
   iso,
@@ -99,6 +100,7 @@ export class OfficeRenderer {
   private windows: Pt[][] = [];
   private tvScreen: Pt[] = [];
   actors = new ActorWorld(this.layout);
+  private drama = new Drama();
   camera = { zoom: 2, x: 0, y: 0 };
   private userMoved = false;
   private cssW = 800;
@@ -317,6 +319,8 @@ export class OfficeRenderer {
     if (!state) return;
     this.ensureLayout(state);
     this.actors.update(state, dt, now);
+    this.drama.ingest(state, now);
+    this.drama.expire(now);
     const last = this.valueHistory[this.valueHistory.length - 1];
     if (!last || last.date !== state.clock.date) {
       this.valueHistory.push({ date: state.clock.date, v: state.kpis.valuation });
@@ -385,6 +389,52 @@ export class OfficeRenderer {
       ctx.fillRect(0, 0, SCENE_W, SCENE_H);
       ctx.restore();
       if (alpha > 0.2) this.drawLamps(ctx, occupied, alpha);
+    }
+    this.drawDrama(ctx, now);
+  }
+
+  /** Influence lines between colleagues and confetti bursts (scene space, above the lighting). */
+  private drawDrama(ctx: Ctx, now: number): void {
+    const head = (id: string) => {
+      const a = this.actors.actors.get(id);
+      if (!a || a.alpha < 0.3) return null;
+      const p = iso(a.x, a.y);
+      return { x: p.x, y: p.y - 16 };
+    };
+    for (const l of this.drama.links) {
+      const a = head(l.from);
+      const b = head(l.to);
+      if (!a || !b) continue;
+      const t = (now - l.born) / LINK_MS;
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      const steps = Math.max(2, Math.floor(len / 3));
+      const crawl = Math.floor(now / 120) % 2;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, 2 * (1 - t));
+      ctx.fillStyle = "#ffd25a";
+      for (let i = crawl; i <= steps; i += 2) {
+        const f = i / steps;
+        ctx.fillRect(Math.round(a.x + (b.x - a.x) * f), Math.round(a.y + (b.y - a.y) * f - Math.sin(f * Math.PI) * 10), 1, 1);
+      }
+      ctx.fillRect(Math.round(b.x) - 1, Math.round(b.y) - 1, 3, 3);
+      ctx.restore();
+    }
+    const colors = ["#ffd25a", "#7cf0a0", "#ff6bd1", "#6cc4ff", "#fdf6e3"];
+    for (const burst of this.drama.bursts) {
+      const h = head(burst.actorId);
+      if (!h) continue;
+      const t = (now - burst.born) / 1000;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - (now - burst.born) / BURST_MS);
+      for (let i = 0; i < 14; i++) {
+        const ang = burst.seed + i * 2.399;
+        const v = 18 + (i % 4) * 7;
+        const x = h.x + Math.cos(ang) * v * t;
+        const y = h.y - 6 - Math.abs(Math.sin(ang)) * v * t + 40 * t * t;
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillRect(Math.round(x), Math.round(y), i % 3 === 0 ? 2 : 1, 1);
+      }
+      ctx.restore();
     }
   }
 
@@ -463,7 +513,8 @@ export class OfficeRenderer {
     }
     // status bubble
     const iconKind = this.iconFor(e, state);
-    const cycle = ((now / 1000 + a.seed * 0.37) % 9) < (e.status === "stressed" ? 6 : 3.2);
+    const visibleFor = e.status === "stressed" ? 6 : e.status === "idle" ? 1.4 : 3.2;
+    const cycle = ((now / 1000 + a.seed * 0.37) % (e.status === "idle" ? 12 : 9)) < visibleFor;
     if (iconKind && (sel || hov || cycle) && !a.leaving) {
       ctx.drawImage(icon(iconKind), Math.round(p.x) - 6, sy - 13);
     }
@@ -585,6 +636,32 @@ export class OfficeRenderer {
         plate(at, "VACANT", "for lease", "#3a3344", "#b6abc4");
       }
     });
+    // speech bubbles for events
+    const shoutFont = Math.round(Math.max(13, Math.min(22, 7.5 * z)));
+    ctx.font = `${shoutFont}px VT323, monospace`;
+    for (const s of this.drama.shouts) {
+      const a = this.actors.actors.get(s.actorId);
+      if (!a || a.alpha < 0.3) continue;
+      const feet = this.toScreen(iso(a.x, a.y));
+      const t = (now - s.born) / SHOUT_MS;
+      const w = ctx.measureText(s.text).width + 12;
+      const h = shoutFont + 6;
+      const x = Math.round(feet.x - w / 2);
+      const y = Math.round(feet.y - 42 * z - h - (t < 0.1 ? (0.1 - t) * 40 : 0));
+      ctx.globalAlpha = t > 0.85 ? (1 - t) / 0.15 : 1;
+      ctx.fillStyle = "#1b1426";
+      ctx.fillRect(x - 2, y - 2, Math.round(w) + 4, h + 4);
+      ctx.fillStyle = "#fdf6e3";
+      ctx.fillRect(x, y, Math.round(w), h);
+      ctx.fillStyle = s.color;
+      ctx.fillRect(x, y, 3, h);
+      ctx.fillStyle = "#fdf6e3";
+      ctx.fillRect(Math.round(feet.x) - 3, y + h, 6, 3);
+      ctx.fillRect(Math.round(feet.x) - 1, y + h + 3, 2, 2);
+      ctx.fillStyle = "#2b2130";
+      ctx.fillText(s.text, feet.x + 1, y + h / 2 + 1);
+      ctx.globalAlpha = 1;
+    }
     // names & floaters
     const nameFont = Math.round(Math.max(10, Math.min(16, 6 * z)));
     const floatFont = Math.round(Math.max(13, Math.min(26, 9 * z)));

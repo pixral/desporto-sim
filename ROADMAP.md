@@ -21,13 +21,19 @@ LAB requires an out-of-sample holdout before recommending deployment; strategies
 never twice per review, with a 60-day cooldown (fixed a double-deploy bug); "promising" LAB results no longer
 flood the history; colleague influence and desk familiarity actually happen now. 44 backend tests.
 
+## Done since (2026-10-03, night)
+
+Economy tuning: near-flat "unit" staking (sizing by perceived edge was losing money), Easy/Normal/Hard
+presets (capital, costs, subscribers, bookmaker sharpness) in the New company dialog, calibrated with 16 seeds
+per CEO style. Office drama: speech bubbles on events (fired, promoted, I quit, refusals, big wins with
+confetti), influence lines between colleagues, quieter idle bubbles, collapsible legend, themed scrollbars.
+
 ## Next
 
 1. Visual polish pass with fresh eyes on a long run (label overlap at small zoom, crowded Bench).
    Also show colleague influence and refusals visibly in the office (speech lines between desks).
 2. Run a short real Claude session (a few simulated days) to check prompt quality and cost per day.
 3. Performance: cache team ratings across LAB backtests (data-driven runs are ~3× slower at max speed).
-4. Economy tuning: slightly more upside for well-run companies; difficulty presets in the New company dialog.
 5. Summer leagues (e.g. MLS/Brasileirão desk) so June–July is not dead time.
 6. Real sports provider (`ISportsDataProvider`) and a wall-clock "live" mode.
 7. More drama: tipster arguments/rivalries visible in the office, poaching, bonus schemes, CEO replaced by

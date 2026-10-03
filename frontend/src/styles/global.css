@@ -867,3 +867,19 @@ pre.prompt {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------------ scrollbars (pixel theme) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}

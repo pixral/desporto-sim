@@ -250,8 +250,11 @@ class SimulationEngine:
                     log.odds, log.stake, log.bet_id = bet.odds, bet.stake, bet.id
                     log.model_edge = bet.model_edge
                     log.influenced_by = [w.employees[i].name for i in infl]
-                    # memorable punts only: a maxed-out stake on a longshot, or a real moonshot
-                    if (bet.stake >= 0.9 * max_stake and max_stake >= 20 and bet.odds >= 3.5) or bet.odds >= 8.0:
+                    # memorable punts only (a maxed-out stake on a longshot, or a moonshot), at most weekly per person
+                    memorable = (bet.stake >= 0.95 * max_stake and max_stake >= 20 and bet.odds >= 4.5) or bet.odds >= 8.0
+                    last = w.milestones.get(f"swing:{emp.id}", 0)
+                    if memorable and w.today.toordinal() - int(last) >= 7:
+                        w.milestones[f"swing:{emp.id}"] = w.today.toordinal()
                         history.record(w, "big_swing", f"{emp.name} swings big: €{bet.stake:.0f} on {bet.selection} @ {bet.odds}",
                                        bet.reason, 1, "drama", [emp.id], dept.id)
                 log.notes = notes

@@ -50,6 +50,20 @@ export function NewRunDialog() {
           <label htmlFor="cn">Company name</label>
           <input id="cn" value={form.company_name ?? ""} maxLength={60} onChange={(e) => set("company_name", e.target.value)} />
         </div>
+        <h3 style={{ margin: "12px 0 8px" }}>Difficulty</h3>
+        <div className="style-cards" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+          {meta.difficulties.map((d) => (
+            <div
+              key={d.key}
+              className={`style-card ${form.difficulty === d.key ? "active" : ""}`}
+              onClick={() => setForm((f) => ({ ...f, difficulty: d.key, starting_capital: d.capital }))}
+            >
+              <b>{d.key}</b>
+              €{d.capital.toLocaleString()} capital · costs {d.cost_mult === 1 ? "normal" : d.cost_mult < 1 ? "lower" : "higher"} ·{" "}
+              {d.market_xg < 0 ? "softer" : d.market_xg > 0 ? "sharper" : "normal"} bookmakers · {d.start_subs} subscribers
+            </div>
+          ))}
+        </div>
         <h3 style={{ margin: "12px 0 8px" }}>CEO personality</h3>
         <div className="style-cards">
           {meta.ceo_styles.map((s) => (

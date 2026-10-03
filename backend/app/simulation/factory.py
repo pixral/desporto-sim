@@ -34,7 +34,7 @@ def create_world(config: RunConfig, sports: ISportsDataProvider) -> World:
     start = config.start_date
     finances = Finances(
         cash=config.starting_capital * (1 - EC.BANKROLL_SHARE),
-        subscribers=EC.START_SUBSCRIBERS,
+        subscribers=int(EC.preset(config.difficulty)["start_subs"]),
         subscription_price=EC.SUBSCRIPTION_PRICE,
         marketing_budget=EC.DEFAULT_MARKETING,
         lab_budget=EC.DEFAULT_LAB_BUDGET,

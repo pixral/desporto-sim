@@ -12,9 +12,8 @@ SEVERANCE_MONTHS = 1.0
 SALARY_CUT_STRESS = 0.12
 
 SUBSCRIPTION_PRICE = 12.0
-START_SUBSCRIBERS = 50
-SUB_ACQUISITION = 0.40  # new subscribers per month = SUB_ACQUISITION * sqrt(marketing) * quality
-SUB_BASE_CHURN = 0.07
+# starting subscribers, acquisition (new/month = sub_acq * sqrt(marketing) * quality) and base churn
+# depend on the difficulty preset below
 
 LOAN_INTEREST_MONTHLY = 0.02
 CREDIT_LINE_RATIO = 0.30  # of starting capital, while not in distress
@@ -26,3 +25,18 @@ DEFAULT_MARKETING = 80.0
 DEFAULT_LAB_BUDGET = 60.0
 DEFAULT_STAKE_LIMIT = 0.05
 BANKROLL_SHARE = 0.7  # share of starting capital put into desk bankrolls at founding
+
+# Difficulty presets. cost_mult scales salaries, rent and data feeds; market_xg shifts how much the
+# bookmakers already use expected goals (negative = softer market, bigger edges for good analysts).
+DIFFICULTY: dict[str, dict[str, float]] = {
+    "easy": {"capital": 30000.0, "cost_mult": 0.85, "start_subs": 75, "sub_acq": 0.50, "sub_churn": 0.060,
+             "market_xg": -0.15},
+    "normal": {"capital": 20000.0, "cost_mult": 0.95, "start_subs": 65, "sub_acq": 0.45, "sub_churn": 0.065,
+               "market_xg": -0.06},
+    "hard": {"capital": 14000.0, "cost_mult": 1.10, "start_subs": 45, "sub_acq": 0.38, "sub_churn": 0.075,
+             "market_xg": 0.08},
+}
+
+
+def preset(difficulty: str) -> dict[str, float]:
+    return DIFFICULTY.get(difficulty, DIFFICULTY["normal"])

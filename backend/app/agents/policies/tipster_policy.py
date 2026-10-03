@@ -15,6 +15,14 @@ from app.domain.base import clamp
 
 STATUS_DISTRESS = {"thriving": 0.0, "stable": 0.15, "strained": 0.45, "distress": 0.8, "bankrupt": 1.0}
 
+# Stake size in units of the CEO's max stake ("unit staking" with a personal touch). Tuned with headless
+# batch runs: sizing strongly by perceived edge or shrinking longshot stakes made companies lose more,
+# because the biggest stakes landed on the noisiest bets (see docs/ECONOMY.md).
+SIZING: dict[str, float] = {
+    "base": 0.5, "margin": 1.0, "margin_cap": 0.25, "risk": 0.15, "conf": 0.05, "desperation": 0.25,
+    "hubris": 0.05, "fear": 0.2, "odds_exp": 0.0, "max_out_at": 0.6,
+}
+
 
 def _state(ctx: dict[str, Any]) -> dict[str, float]:
     a = ctx["agent"]
@@ -87,11 +95,13 @@ def decide_day(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
             odds = c["odds"]
             # Stakes are sized in "units" of the CEO's stake limit. Conviction, risk appetite and mood
             # move the size; longshots get smaller stakes; the strategy's Kelly fraction scales it all.
-            size = (0.35 + 4.0 * best["margin"] + 0.3 * (s["risk"] - 0.4) + 0.2 * (s["conf"] - 0.5)
-                    + 0.5 * s["desperation"] + 0.2 * s["hubris"] - 0.2 * s["fear"])
-            size *= min(1.0, (2.5 / odds) ** 0.5) * (strat["kelly_fraction"] / 0.25) ** 0.5
+            z = SIZING
+            size = (z["base"] + z["margin"] * min(best["margin"], z["margin_cap"]) + z["risk"] * (s["risk"] - 0.4)
+                    + z["conf"] * (s["conf"] - 0.5) + z["desperation"] * s["desperation"] + z["hubris"] * s["hubris"]
+                    - z["fear"] * s["fear"])
+            size *= min(1.0, (2.5 / odds) ** z["odds_exp"]) * (strat["kelly_fraction"] / 0.25) ** 0.5
             size = clamp(size, 0.12, 1.0)
-            if s["desperation"] > 0.6:
+            if s["desperation"] > z["max_out_at"]:
                 size = max(size, 0.6 + 0.4 * s["desperation"])
             stake = max_stake * size
             stake = clamp(stake, 1.0, min(max_stake, bankroll_left))

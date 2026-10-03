@@ -413,11 +413,13 @@ export interface Meta {
     start_date: string;
     starting_capital: number;
     initial_tipsters: number;
+    difficulty: string;
     ai_provider: string;
   };
   ai_provider_default: string;
   default_model: string;
   paper_trading_only: boolean;
+  difficulties: { key: string; capital: number; cost_mult: number; start_subs: number; market_xg: number }[];
 }
 
 export interface DepartmentDetail {

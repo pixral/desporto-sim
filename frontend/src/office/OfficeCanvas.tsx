@@ -16,6 +16,23 @@ export function OfficeCanvas() {
   const rendererRef = useRef<OfficeRenderer | null>(null);
   const [hover, setHover] = useState<Hover | null>(null);
   const [names, setNames] = useState(false);
+  const [legend, setLegend] = useState(() => {
+    try {
+      return localStorage.getItem("office-legend") !== "hidden";
+    } catch {
+      return true;
+    }
+  });
+  const toggleLegend = () => {
+    setLegend((v) => {
+      try {
+        localStorage.setItem("office-legend", v ? "hidden" : "shown");
+      } catch {
+        /* private mode */
+      }
+      return !v;
+    });
+  };
   const [cursor, setCursor] = useState("");
   const selectEmployee = useStore((s) => s.selectEmployee);
   const selectDepartment = useStore((s) => s.selectDepartment);
@@ -138,11 +155,17 @@ export function OfficeCanvas() {
           )}
         </div>
       )}
-      <div className="office-legend">
-        Drag to pan · scroll to zoom · click a person or a desk. Bubbles: <b>?</b> analyzing, <b>€</b> bet placed, ball watching,
-        bulb researching, cloud frustrated, red <b>!!</b> stressed, orange <b>!</b> under review.
-      </div>
+      {legend && (
+        <div className="office-legend">
+          Drag to pan · scroll to zoom · click a person or a desk. Bubbles: <b>?</b> analyzing, <b>€</b> bet placed, ball
+          watching, bulb researching, cloud frustrated, red <b>!!</b> stressed, orange <b>!</b> under review. Yellow dotted
+          line: someone followed a colleague's call.
+        </div>
+      )}
       <div className="office-tools">
+        <button onClick={toggleLegend} className={legend ? "active" : ""} aria-label="Show legend">
+          ?
+        </button>
         <button onClick={() => setNames((v) => !v)} className={names ? "active" : ""}>
           Names
         </button>

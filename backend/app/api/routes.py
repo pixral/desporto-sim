@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.catalog import CEO_STYLE_INFO
 from app.domain.world import CEO_STYLES, RunConfig
+from app.economy.config import DIFFICULTY
 from app.simulation import views
 from app.simulation.runner import SPEEDS, SimulationRunner
 
@@ -35,6 +36,7 @@ class NewRunRequest(BaseModel):
     start_date: date = date(2026, 8, 14)
     starting_capital: float = Field(20000.0, ge=2000, le=1_000_000)
     initial_tipsters: int = Field(8, ge=2, le=16)
+    difficulty: Literal["easy", "normal", "hard"] = "normal"
     ai_provider: Literal["mock", "anthropic"] = "mock"
 
 
@@ -57,6 +59,7 @@ def meta(request: Request) -> dict[str, Any]:
         "ai_provider_default": s.ai_provider,
         "default_model": s.default_model,
         "paper_trading_only": True,
+        "difficulties": [{"key": k, **v} for k, v in DIFFICULTY.items()],
     }
 
 
@@ -73,7 +76,8 @@ async def new_run(body: NewRunRequest, request: Request) -> dict[str, Any]:
     runner = runner_of(request)
     config = RunConfig(company_name=body.company_name, ceo_style=body.ceo_style, seed=body.seed,
                        start_date=body.start_date, starting_capital=body.starting_capital,
-                       initial_tipsters=body.initial_tipsters, ai_provider=body.ai_provider)
+                       initial_tipsters=body.initial_tipsters, difficulty=body.difficulty,
+                       ai_provider=body.ai_provider)
     try:
         world = await runner.new_run(config)
     except (RuntimeError, ValueError) as exc:

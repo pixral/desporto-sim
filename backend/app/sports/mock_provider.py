@@ -119,6 +119,7 @@ class UclState(Model):
 
 class MockState(Model):
     seed: int
+    xg_offset: float = 0.0  # difficulty: how much more (or less) the books already use expected goals
     rng_state: list[Any] = Field(default_factory=list)
     processed_through: date | None = None
     truth: dict[str, TeamTruth] = Field(default_factory=dict)
@@ -155,7 +156,7 @@ def season_year_for(d: date) -> int:
 class MockSportsDataProvider:
     name = "mock"
 
-    def __init__(self, seed: int = 7) -> None:
+    def __init__(self, seed: int = 7, xg_offset: float = 0.0) -> None:
         self._teams: dict[str, Team] = {}
         self._strength: dict[str, int] = {}
         for comp, clubs in CLUBS.items():
@@ -163,7 +164,7 @@ class MockSportsDataProvider:
                 self._teams[tid] = Team(id=tid, name=name, short=short, competition=comp,
                                         country=COUNTRY[comp], popular=popular)
                 self._strength[tid] = strength
-        self.state = MockState(seed=seed)
+        self.state = MockState(seed=seed, xg_offset=xg_offset)
         self.rng = random.Random(seed * 7919 + 17)
         self._by_day: dict[date, list[str]] = {}
         self._init_truth()
@@ -547,7 +548,7 @@ class MockSportsDataProvider:
 
     def _book_learn(self, book: BookProfile, m: Match, exp_h: float, exp_a: float) -> None:
         bs = self.state.books[book.name]
-        xu = book.xg_use if bs.xg_use is None else bs.xg_use
+        xu = clamp((book.xg_use if bs.xg_use is None else bs.xg_use) + self.state.xg_offset, 0.0, 0.95)
         obs_h = (1 - xu) * (m.home_goals or 0) + xu * (m.home_xg or 0.0)
         obs_a = (1 - xu) * (m.away_goals or 0) + xu * (m.away_xg or 0.0)
         # Linear (unbiased) residuals; a log residual would drift ratings down via Jensen's inequality.
