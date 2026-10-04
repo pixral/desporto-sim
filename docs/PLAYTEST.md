@@ -41,6 +41,14 @@ Start with `.\start.ps1` (or the Browser pane while a Claude session is running)
 - [ ] **Sandbox** button: try an investor, a disaster, a betting-stock crash (watch company value), plant a headline
       and find it in the paper, open the canteen for free. Each shows up in History; the end screen counts them.
 
+## 7. Moods
+- [ ] Hover over people: mood, stress, confidence. Burned-out people sometimes call in sick (empty chair, "calls in
+      sick" in the feed) and come back with "I'm back."
+- [ ] After a heavy losing day someone may go **on tilt** ("I'll win it back!") and bet more and riskier the next day.
+- [ ] A shaken tipster on a losing run may **lose their nerve** ("I can't pick…") and pass on everything for days.
+- [ ] Cocky winners **brag**, which can start an argument at the desk.
+- [ ] CEO view: "GIVE_TIME_OFF" and "TEAM_EVENT" decisions, and the "Team night out" in History.
+
 ## What to report
 For anything odd: what you did, the in-game date, and a screenshot. The **History** and **AI log** views usually
 show why something happened.

@@ -57,6 +57,8 @@ FACILITIES: dict[str, dict[str, object]] = {
     },
 }
 CANTEEN_STRESS_RELIEF = 0.04  # lower stress target for everyone
+TEAM_EVENT_PER_HEAD = 12.0  # a team night out, × cost_mult
+TEAM_EVENT_COOLDOWN_DAYS = 45
 STUDIO_ACQUISITION = 1.5
 LEASE_BREAK_MONTHS = 1.0  # rent owed when a lease is given up early
 

@@ -112,7 +112,9 @@ def ceo_user(ctx: dict[str, Any]) -> str:
               "SET_MARKETING_BUDGET(amount) DEPLOY_STRATEGY(experiment_id, employee_id) "
               "ADJUST_STRATEGY(employee_id, field, value) FREEZE_HIRING UNFREEZE_HIRING CUT_SALARIES(pct) "
               "TAKE_LOAN(amount) REPAY_LOAN(amount) LEASE_SPACE(facility) RELEASE_SPACE(facility) "
-              "(facility: canteen, desk_wing or studio; leases only at monthly reviews). "
+              "(facility: canteen, desk_wing or studio; leases only at monthly reviews) "
+              "TEAM_EVENT (a paid night out that lowers everyone's stress; monthly reviews) "
+              "GIVE_TIME_OFF(employee_id, value=days 1-7: paid rest, no bets meanwhile). "
               "Each action may include a short reason.",
               "Respond with JSON: {\"thought\": str, \"memo\": str, \"actions\": [ ... ]}"]
     return "\n".join(lines)

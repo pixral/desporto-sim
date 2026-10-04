@@ -102,6 +102,10 @@ export class ActorWorld {
         out.set(e.id, L.entrance);
         continue;
       }
+      if (e.status === "away") {
+        out.set(e.id, { ...L.entrance, key: HOME_KEY }); // off sick or on leave: not in today
+        continue;
+      }
       if (e.role === "ceo") {
         out.set(e.id, e.status === "meeting" && meeting.length > L.ceoVisitors.length ? L.meetingHead : L.ceoSeat);
         continue;

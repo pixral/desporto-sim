@@ -60,13 +60,13 @@ def gather_meeting(world: World, scope: str, touched: set[str] | None = None) ->
     (the head of desk, else its most senior member). The LAB joins the monthly review."""
     touched = touched or set()
     called = [world.employees[i] for i in sorted(touched) if i in world.employees]
-    called = [e for e in called if e.active and e.role != "ceo" and e.status != "arriving"]
+    called = [e for e in called if e.active and e.role != "ceo" and e.status not in ("arriving", "away")]
     leads: list[Employee] = []
     for d in sorted(world.active_departments(), key=lambda d: d.room_slot):
         if d.kind == "lab" and scope == "weekly":
             continue
         members = [e for e in world.department_members(d.id) if e.role in ("tipster", "researcher")
-                   and e.status != "arriving"]
+                   and e.status not in ("arriving", "away")]
         if not members:
             continue
         head = next((e for e in members if e.id == d.head_id), None)
@@ -108,18 +108,7 @@ def _desk_moments(world: World, rng: random.Random) -> None:
                 temper = (a.traits.aggressive + b.traits.aggressive + a.traits.stubborn + b.traits.stubborn) / 4
                 if rivalry >= 30 and opposite and rng.random() < 0.15 + 0.3 * temper:
                     winner, loser = (a, b) if a.day_profit > 0 else (b, a)
-                    w_line, l_line = rng.choice(WINNER_LINES), rng.choice(LOSER_LINES)
-                    for x, y in ((a, b), (b, a)):
-                        rel = x.relationships[y.id]
-                        rel.trust = clamp(rel.trust - 5, 0, 100)
-                        rel.rivalry = clamp(rel.rivalry + 6, 0, 100)
-                        x.psyche.stress = clamp(x.psyche.stress + 0.04, 0.02, 0.98)
-                    world.stats.arguments += 1
-                    world.milestones[f"desk_moment:{dept.id}"] = _ord(world.today)
-                    history.record(world, "argument", f"{winner.name} and {loser.name} clash at the {dept.name}",
-                                   f'{winner.name}: "{w_line}" — {loser.name}: "{l_line}"',
-                                   2 if rivalry >= 55 else 1, "drama", [winner.id, loser.id], dept.id,
-                                   {"lines": {winner.id: w_line, loser.id: l_line}})
+                    argue(world, rng, winner, loser, dept.id)
                     return
                 friends = min(ra.trust, rb.trust) >= 70
                 if friends and a.day_profit > 0 and b.day_profit > 0 and rng.random() < 0.3:
@@ -128,6 +117,27 @@ def _desk_moments(world: World, rng: random.Random) -> None:
                                    "A good day at the desk.", 1, "good", [a.id, b.id], dept.id,
                                    {"lines": {a.id: "Team work!", b.id: "Team work!"}})
                     return
+
+
+def argue(world: World, rng: random.Random, winner: Employee, loser: Employee, dept_id: str | None,
+          w_line: str | None = None) -> None:
+    """A clash between two desk-mates: trust drops, rivalry and stress rise, everyone hears it."""
+    w_line = w_line or rng.choice(WINNER_LINES)
+    l_line = rng.choice(LOSER_LINES)
+    rivalry = max(winner.relationships[loser.id].rivalry, loser.relationships[winner.id].rivalry)
+    for x, y in ((winner, loser), (loser, winner)):
+        rel = x.relationships[y.id]
+        rel.trust = clamp(rel.trust - 5, 0, 100)
+        rel.rivalry = clamp(rel.rivalry + 6, 0, 100)
+        x.psyche.stress = clamp(x.psyche.stress + 0.04, 0.02, 0.98)
+    world.stats.arguments += 1
+    if dept_id:
+        world.milestones[f"desk_moment:{dept_id}"] = _ord(world.today)
+    dept = world.departments.get(dept_id or "")
+    history.record(world, "argument", f"{winner.name} and {loser.name} clash at the {dept.name if dept else 'office'}",
+                   f'{winner.name}: "{w_line}" — {loser.name}: "{l_line}"',
+                   2 if rivalry >= 55 else 1, "drama", [winner.id, loser.id], dept_id,
+                   {"lines": {winner.id: w_line, loser.id: l_line}})
 
 
 def _is_star(world: World, e: Employee) -> metrics.PerfStats | None:

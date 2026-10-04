@@ -133,3 +133,21 @@ Deterministic, personality-driven, no AI calls:
   injected. At most once a year.
 - **Season awards** (1 June): MVP, flop of the season, sharpest, biggest win, desk of the season and LAB idea of
   the season, plus the season's totals. Shown as an "Awards night" screen and kept in History.
+
+## Mood events (`simulation/moods.py`)
+
+Feelings turn into things that happen. The states are facts about a person and appear in their AI context; the
+mock tipster follows them, an LLM is told about them in its situation notes.
+
+| Event | When | Effect |
+|---|---|---|
+| Sick day | Stress ≥ 80% (more likely when confidence is also low): 1.5–13.5% a morning | Stays home 1–3 days: no bets, not in the office; stress drops 4 points a day of rest |
+| Lost nerve | Confidence < 28% after 4+ losses in a row (cautious people most) | Passes on everything for 3–6 days, until confidence recovers |
+| Tilt | A losing day of at least 3 max stakes; risk-seekers, ambitious, stressed or reviewed people most; at most once every 14 days | Next day: desperate (lower bar, bigger stakes, longshots) and one extra bet allowed |
+| Bragging | A cocky winner after a big day (or a confident one after a huge day), at most every 5 days | Rivals at the desk: rivalry +5, trust −3, a little stress; sometimes an argument |
+
+The CEO can respond with **GIVE_TIME_OFF** (1–7 days of paid rest, 7 stress points a day; any review) and
+**TEAM_EVENT** (a night out at €12 a head × cost level: stress −10, confidence +3 for everyone; monthly, at most
+every 45 days). Data-driven and conservative CEOs give rest to burned-out people; the aggressive expansionist
+mostly doesn't believe in days off; the chaotic founder hands out random leave and spontaneous parties.
+

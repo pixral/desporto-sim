@@ -91,6 +91,14 @@ describe("actors", () => {
     expect(a.moving).toBe(false);
   });
 
+  it("people off sick or on leave stay home", () => {
+    const world = new ActorWorld(buildLayout(new Set([0])));
+    run(world, state([emp("a", "away", "d1"), emp("b", "idle", "d1")]), 3);
+    expect(world.actors.get("a")!.away).toBe(true);
+    expect(world.actors.get("a")!.alpha).toBe(0);
+    expect(world.actors.get("b")!.away).toBe(false);
+  });
+
   it("fired people walk to the exit and fade out", () => {
     const world = new ActorWorld(buildLayout(new Set([0])));
     run(world, state([emp("a", "working", "d1")]), 3);

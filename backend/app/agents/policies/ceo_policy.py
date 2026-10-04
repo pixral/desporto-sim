@@ -134,6 +134,9 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
                 plan.add("PROMOTE", f"Outstanding: ROI {e['roi_90d']:+.1%} over {e['bets_90d']} bets.", employee_id=e["id"])
                 promos += 1
 
+    # ---- wellbeing ------------------------------------------------------------------------
+    _wellbeing(ctx, style, plan, rng, fired, scope, thriving, in_trouble)
+
     # ---- money: limits, budgets, loans ----------------------------------------------------
     double_down = in_trouble and rng.random() < st["double_down"] * (0.7 + 0.6 * conf)
     for d in depts:
@@ -316,6 +319,37 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
     return {"thought": _thought(ctx, style, rw, in_trouble, thriving),
             "memo": _memo(ctx, style, plan, rw, in_trouble, thriving, scope),
             "actions": plan.actions}
+
+
+def _wellbeing(ctx: dict[str, Any], style: str, plan: _Plan, rng: random.Random, fired: set[str], scope: str,
+               thriving: bool, in_trouble: bool) -> None:
+    """Rest for the burned-out (any review) and a team night out when morale sags (monthly)."""
+    co = ctx["company"]
+    costs = max(co["monthly_costs"], 200.0)
+    staff = [e for e in ctx["employees"] if e["id"] not in fired and not e.get("away")]
+    bar = {"data_driven": 0.82, "conservative_operator": 0.85, "aggressive_expansionist": 0.93,
+           "chaotic_founder": 0.8}[style]
+    for e in sorted((e for e in staff if e["stress"] >= bar), key=lambda e: -e["stress"])[:1 if scope == "weekly" else 2]:
+        if style == "aggressive_expansionist" and rng.random() < 0.6:
+            continue  # "we don't do days off here"
+        if style == "chaotic_founder" and rng.random() < 0.5:
+            continue
+        days = rng.randint(1, 7) if style == "chaotic_founder" else 3
+        plan.add("GIVE_TIME_OFF", f"Stress {e['stress']:.0%}. Rest now, or lose them later.", employee_id=e["id"],
+                 value=days)
+    if scope != "monthly" or in_trouble or co.get("days_since_team_event", 999) < 45:
+        return
+    avg = ctx.get("office", {}).get("avg_staff_stress", 0.0)
+    cash_ok = co["cash"] > 2 * costs
+    go = {
+        "data_driven": avg > 0.5 and cash_ok,
+        "conservative_operator": avg > 0.6 and thriving and co["cash"] > 3 * costs,
+        "aggressive_expansionist": (thriving or avg > 0.55) and cash_ok,
+        "chaotic_founder": rng.random() < 0.12 and co["cash"] > costs,
+    }[style]
+    if go:
+        plan.add("TEAM_EVENT", f"Average stress {avg:.0%}. Everyone needs a night out." if style != "chaotic_founder"
+                 else "Spontaneous team night. Don't ask why.")
 
 
 def _office_moves(ctx: dict[str, Any], style: str, plan: _Plan, rng: random.Random, rw: float,
@@ -522,6 +556,8 @@ def _memo(ctx: dict[str, Any], style: str, plan: _Plan, rw: float, in_trouble: b
         parts.append("A LAB strategy is going live.")
     if plan.count("TAKE_LOAN"):
         parts.append("We have secured additional credit.")
+    if plan.count("TEAM_EVENT"):
+        parts.append("Team night out this month, on the company.")
     if plan.count("LEASE_SPACE"):
         parts.append("We are taking more space in the east wing.")
     if plan.count("RELEASE_SPACE"):

@@ -51,6 +51,10 @@ sharp book only reins in runaways; shown in the desk panel, the history, the pap
 Easy no longer compounds into €0.7M companies (best run now €176k), and Hard was softened (€16k capital, lower
 costs) so disciplined CEOs can survive it. Calibration table in ECONOMY.md.
 
+Mood events: burned-out people call in sick (empty chairs, no bets), shaken tipsters lose their nerve and pass on
+everything, heavy losers go on tilt and chase it the next day, cocky winners brag and start arguments; the CEO
+can give time off or throw a team night out (each style differently). Chaotic companies feel it most.
+
 ## Next
 
 1. Visual polish pass with fresh eyes on a long run (label overlap at small zoom, crowded Bench).

@@ -41,7 +41,7 @@ from app.economy import market
 from app.economy import valuation as val
 from app.sports.provider import ISportsDataProvider
 
-from . import city, drama, history, lab, metrics
+from . import city, drama, history, lab, metrics, moods
 from .rng import dump_rng, load_rng
 from .summary import build_summary
 
@@ -53,6 +53,11 @@ PHASES: list[tuple[str, time]] = [
 ]
 MAX_MATCHES_PER_DAY = 6
 MAX_BETS_BY_LEVEL = {0: 2, 1: 3, 2: 4, 3: 4}
+
+
+def max_bets(emp: Employee, today: date) -> int:
+    """Daily bet allowance; someone on tilt squeezes in one more."""
+    return MAX_BETS_BY_LEVEL.get(emp.level, 3) + (1 if moods.tilted(emp, today) else 0)
 DECISION_LOG_SIZE = 150
 MATCH_RETENTION_DAYS = 450
 
@@ -130,6 +135,7 @@ class SimulationEngine:
                 e.status, e.task = "idle", "Morning coffee"
         for dept in w.departments.values():
             dept.day_profit = 0.0
+        moods.morning(w, self.rng)  # sick days, leave, lost nerve
         if d.day == 1 and w.clock.day_index > 0:
             self._month_close(d - timedelta(days=1))
             if w.ended:
@@ -188,6 +194,8 @@ class SimulationEngine:
         analyses: dict[str, list[MatchAnalysis]] = {}
         leanings: dict[str, list[Leaning]] = {}
         for emp in sorted(w.tipsters(), key=lambda e: e.id):
+            if emp.is_away(today):
+                continue
             dept = w.departments.get(emp.department_id or "")
             strat = w.strategies.get(emp.strategy_id or "")
             if dept is None or not dept.active or strat is None:
@@ -221,7 +229,7 @@ class SimulationEngine:
         for emp_id in order:
             emp = w.employees[emp_id]
             ctx = build_tipster_context(w, self.index, emp, analyses[emp_id], leanings,
-                                        MAX_BETS_BY_LEVEL.get(emp.level, 3))
+                                        max_bets(emp, today))
             jobs.append(self.gateway.run(
                 purpose="tipster_day", agent_id=emp.id, agent_name=emp.name, sim_time=w.clock.now,
                 system=prompts.tipster_system(ctx), user=prompts.tipster_user(ctx), context=ctx,
@@ -238,7 +246,7 @@ class SimulationEngine:
         by_id = {r.match.id: r for r in rows}
         seen: set[str] = set()
         bets_placed = 0
-        max_bets = MAX_BETS_BY_LEVEL.get(emp.level, 3)
+        bet_limit = max_bets(emp, w.today)
         coworker_ids = {e.name: e.id for e in w.active_employees()}
         for dec in out.decisions:
             row = by_id.get(dec.match_id)
@@ -258,7 +266,7 @@ class SimulationEngine:
                 choice = bookmakers.choose_book(dept, m, dec.market, stake) if best and stake >= 1.0 else None
                 if best is None:
                     notes.append("unknown market; treated as NO_BET")
-                elif bets_placed >= max_bets:
+                elif bets_placed >= bet_limit:
                     notes.append("daily bet limit reached; treated as NO_BET")
                 elif choice is None or choice[2] < 1.0:
                     notes.append("stake below €1; treated as NO_BET")
@@ -321,6 +329,8 @@ class SimulationEngine:
             b = w.bets[bid]
             open_by_emp[b.employee_id] = open_by_emp.get(b.employee_id, 0) + 1
         for e in w.tipsters():
+            if e.is_away(w.today):
+                continue
             n = open_by_emp.get(e.id, 0)
             if n:
                 e.status, e.task = "watching", f"Watching {n} open bet(s)"
@@ -369,6 +379,7 @@ class SimulationEngine:
         day_pnl = sum(d.day_profit for d in w.departments.values())
         self._daily_people()
         drama.daily(w, self.rng)
+        moods.evening(w, self.rng)  # tilt for tomorrow, bragging
         accounting.accrue_daily_costs(w)
         for note in accounting.ensure_liquidity(w):
             history.record(w, "liquidity", note, "", 2, "bad")
@@ -398,7 +409,7 @@ class SimulationEngine:
                     e.pnl_flash_seq += 1
                     e.status = "celebrating" if e.day_profit > 0 else "frustrated"
                     e.task = f"Day P/L €{e.day_profit:+.2f}"
-                if e.psyche.stress > 0.75:
+                if e.psyche.stress > 0.75 and not e.is_away(w.today):
                     e.status = "stressed"
             elif e.role == "researcher":
                 psychology.researcher_daily_update(e, distress, w.finances.lab_budget / 60.0, canteen)

@@ -106,16 +106,20 @@ grew €30k into €0.76M in two years; with them the best Easy run ends at €1
 
 ## Calibration snapshot (2 years, mock AI)
 
-Measured 2026-10-04 with the city, office space, drama and bookmaker limits. Normal and Hard: 16 seeds per CEO
-style; Easy: 8 seeds. "Grew" = alive and worth more than the starting capital. Medians are the honest number:
-a few runaway companies dominate the means.
+Measured 2026-10-04 with the city, office space, drama, bookmaker limits and mood events. Normal and Hard: 16
+seeds per CEO style; Easy: 8 seeds (Hard and Easy with a slightly stronger first version of tilt). "Grew" = alive
+and worth more than the starting capital. Medians are the honest number: a few runaway companies dominate the
+means, and 16 seeds still leave a median uncertain by roughly ±€2k.
 
 | CEO style | Easy (from €30k): bankrupt · grew · median | Normal (from €20k): bankrupt · grew · median | Hard (from €16k): bankrupt · grew · median |
 |---|---|---|---|
-| Conservative operator | 0/8 · 6/8 · €34.4k | 0/16 · 5/16 · €15.7k | 2/16 · 0/16 · €9.3k |
-| Aggressive expansionist | 0/8 · 4/8 · €34.0k | 1/16 · 4/16 · €13.1k | 10/16 · 1/16 · €3.7k |
-| Data-driven | 0/8 · 5/8 · €35.9k | 0/16 · 5/16 · €16.8k | 3/16 · 3/16 · €5.9k |
-| Chaotic founder | 0/8 · 4/8 · €37.6k | 0/16 · 4/16 · €14.3k | 7/16 · 1/16 · €3.6k |
+| Conservative operator | 0/8 · 5/8 · €33.6k | 0/16 · 6/16 · €15.4k | 2/16 · 2/16 · €7.3k |
+| Aggressive expansionist | 0/8 · 4/8 · €42.6k | 2/16 · 5/16 · €9.9k | 8/16 · 2/16 · €4.0k |
+| Data-driven | 0/8 · 4/8 · €30.9k | 1/16 · 8/16 · €18.0k | 2/16 · 3/16 · €6.9k |
+| Chaotic founder | 0/8 · 5/8 · €47.5k | 1/16 · 3/16 · €8.5k | 9/16 · 1/16 · €3.3k |
+
+Mood events hit chaotic companies hardest (stressed staff tilt and call in sick): over 32 seeds their median is
+€10.0k with moods and €12.1k without. Data-driven management copes best.
 
 For comparison, the build before the city/office round (Normal, 16 seeds): bankrupt 0/2/0/1, grew 5/3/5/5,
 medians €16.6k/€10.8k/€13.4k/€14.6k. The drop against the earliest snapshot (Normal means €20–24k) came from

@@ -106,6 +106,10 @@ def situation_notes(world: World, emp: Employee, recent: metrics.PerfStats) -> l
     notes.append(f"Your reputation is {emp.psyche.reputation:.0f}/100.")
     if emp.under_review:
         notes.append("You are formally under review after a warning from the CEO.")
+    if emp.tilt_on == world.today:
+        notes.append("You lost badly yesterday and you are desperate to win it back today.")
+    if emp.frozen_until is not None and world.today <= emp.frozen_until:
+        notes.append("You have lost your nerve after a long losing run: you can hardly bring yourself to back anything.")
     if emp.streak <= -3:
         notes.append(f"You are on a {-emp.streak}-bet losing streak.")
     elif emp.streak >= 3:
@@ -200,6 +204,8 @@ def build_tipster_context(world: World, index: SportsIndex, emp: Employee, analy
             "career": {"bets": emp.bets_total, "profit": _r(emp.profit, 2), "roi": _r(emp.roi)},
             "month_profit": _r(emp.month_profit, 2), "no_bet_rate": _r(emp.no_bet_rate(), 2),
             "under_review": emp.under_review, "warnings": emp.warnings, "salary": emp.salary,
+            "on_tilt": emp.tilt_on == world.today,
+            "lost_nerve": emp.frozen_until is not None and world.today <= emp.frozen_until,
         },
         "department": {
             "id": dept.id if dept else None, "name": dept.name if dept else "—",
@@ -242,6 +248,8 @@ def employee_rows(world: World, days: int = 90) -> list[dict[str, Any]]:
             "no_bet_rate": _r(e.no_bet_rate(), 2),
             "reputation": _r(e.psyche.reputation, 1), "stress": _r(e.psyche.stress), "confidence": _r(e.psyche.confidence),
             "mood": e.mood, "under_review": e.under_review, "warnings": e.warnings, "streak": e.streak,
+            "away": e.away_reason if e.is_away(world.today) else None,
+            "lost_nerve": e.frozen_until is not None and world.today <= e.frozen_until,
         })
     return rows
 
@@ -313,6 +321,7 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
             "months_since_salary_cut": world.milestones.get("months_since_salary_cut", 99),
             "days_since_desk_closed": world.today.toordinal() - int(world.milestones.get("last_desk_closed", 0)),
             "days_since_swap": world.today.toordinal() - int(world.milestones.get("last_swap", 0)),
+            "days_since_team_event": world.today.toordinal() - int(world.milestones.get("last_team_event", 0)),
             "monthly_payroll": _r(sum(e.salary for e in world.active_employees()), 2),
         },
         "departments": dept_rows,

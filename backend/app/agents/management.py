@@ -503,6 +503,53 @@ def _release(ctx: _Ctx, a) -> tuple[bool, str]:
     return release_facility(ctx.world, a.facility or "")
 
 
+TEAM_ACTIVITIES = ("go-karting", "karaoke", "a long paella lunch", "bowling", "an escape room", "a football five-a-side")
+
+
+def _team_event(ctx: _Ctx, a) -> tuple[bool, str]:
+    w = ctx.world
+    if ctx.scope != "monthly":
+        return False, "team events are planned at the monthly review"
+    since = w.today.toordinal() - int(w.milestones.get("last_team_event", 0))
+    if since < EC.TEAM_EVENT_COOLDOWN_DAYS:
+        return False, f"the last team event was only {since} days ago"
+    staff = [e for e in w.active_employees() if not e.is_away(w.today)]
+    cost = round(EC.TEAM_EVENT_PER_HEAD * len(staff) * EC.preset(w.config.difficulty)["cost_mult"], 0)
+    if w.finances.cash < cost + 100:
+        return False, "not enough cash"
+    w.finances.cash -= cost
+    w.finances.month.other_costs += cost
+    w.finances.totals.other_costs += cost
+    for e in staff:
+        if e.role != "ceo":
+            e.psyche.stress = clamp(e.psyche.stress - 0.1, 0.02, 0.98)
+            e.psyche.confidence = clamp(e.psyche.confidence + 0.03, 0.05, 0.95)
+    w.milestones["last_team_event"] = w.today.toordinal()
+    w.stats.team_events += 1
+    activity = ctx.rng.choice(TEAM_ACTIVITIES)
+    history.record(w, "team_event", f"Team night out: {activity}", f"€{cost:,.0f} on the company. {a.reason}".strip(),
+                   2, "good", [e.id for e in staff if e.role != "ceo"][:6])
+    return True, f"team night out ({activity}, €{cost:,.0f})"
+
+
+def _time_off(ctx: _Ctx, a) -> tuple[bool, str]:
+    from app.simulation import moods  # simulation depends on agents, not the other way round at import time
+
+    w = ctx.world
+    e = _emp(ctx, a.employee_id)
+    if e is None:
+        return False, "no such active employee"
+    if e.is_away(w.today):
+        return False, f"{e.name} is already away"
+    days = int(clamp(a.value or 3, 1, 7))
+    moods.send_home(w, e, days, "leave")
+    e.add_career(w.today, "leave", f"Given {days} day(s) off to recover.")
+    w.stats.days_off_given += days
+    ctx.touched.discard(e.id)
+    history.record(w, "time_off", f"{e.name} gets {days} day(s) off", a.reason, 1, "good", [e.id], e.department_id)
+    return True, f"{e.name} off for {days} day(s)"
+
+
 def _repay(ctx: _Ctx, a) -> tuple[bool, str]:
     paid = accounting.repay_loan(ctx.world, a.amount or 0.0)
     if paid <= 0:
@@ -517,6 +564,6 @@ _HANDLERS = {
     "SET_LAB_BUDGET": _lab_budget, "SET_MARKETING_BUDGET": _marketing, "DEPLOY_STRATEGY": _deploy,
     "ADJUST_STRATEGY": _adjust, "FREEZE_HIRING": _freeze, "UNFREEZE_HIRING": _unfreeze,
     "CUT_SALARIES": _cut_salaries, "TAKE_LOAN": _loan, "REPAY_LOAN": _repay,
-    "LEASE_SPACE": _lease, "RELEASE_SPACE": _release,
+    "LEASE_SPACE": _lease, "RELEASE_SPACE": _release, "TEAM_EVENT": _team_event, "GIVE_TIME_OFF": _time_off,
 }
 

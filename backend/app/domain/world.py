@@ -65,6 +65,12 @@ class RunStats(Model):
     ceo_changes: int = 0
     facilities_leased: int = 0
     god_actions: int = 0  # sandbox interventions by the player
+    sick_days: int = 0
+    tilts: int = 0
+    nerves_lost: int = 0
+    brags: int = 0
+    team_events: int = 0
+    days_off_given: int = 0
 
 
 class AIStats(Model):
