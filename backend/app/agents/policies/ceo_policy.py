@@ -358,7 +358,7 @@ def _office_moves(ctx: dict[str, Any], style: str, plan: _Plan, rng: random.Rand
     elif style == "data_driven":
         if record > 0.01 and co["bets_90d"] >= 300 and affordable(studio, 1.5):
             choice = (studio, f"ROI {record:+.1%} over {co['bets_90d']} bets is worth broadcasting.")
-        elif (stress > 0.45 or quits >= 2) and affordable(canteen, 1.5):
+        elif thriving and (stress > 0.45 or quits >= 2) and affordable(canteen, 2.0):
             choice = (canteen, f"Average stress {stress:.0%}, {quits} departures in 90 days: lunch is cheaper than turnover.")
         elif wants_desk and thriving and affordable(wing, 2.0):
             choice = (wing, "Every desk slot is taken and the numbers support another.")
@@ -369,7 +369,7 @@ def _office_moves(ctx: dict[str, Any], style: str, plan: _Plan, rng: random.Rand
             choice = (studio, "A steady record earns a modest show.")
     else:  # chaotic founder
         options = [f for f in (canteen, studio, wing) if affordable(f, 1.0) and (f["key"] != "desk_wing" or wants_desk)]
-        if options and rng.random() < 0.08:
+        if options and rng.random() < 0.05:
             choice = (rng.choice(options), rng.choice(("Saw it, loved it, signed it.", "Vibes. Big vibes.",
                                                        "Every great company needs one of these.")))
     if choice:

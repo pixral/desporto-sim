@@ -13,13 +13,15 @@ talks to a real-money betting platform. All bankrolls, stakes and salaries are s
 ┌──────────────────────────── backend (Python 3.13 + FastAPI) ─────────────────────────┐
 │ api/          REST routes, WebSocket hub, DTO builders                               │
 │ simulation/   engine (phases), runner (pause/speed), factory, history, summary, views │
+│               drama (people), lab, city (market + morning paper), god (sandbox tools) │
 │ agents/       context builders, prompts, psychology, relationships, hiring,          │
 │               management (CEO action validation), policies/ (mock "brains")          │
 │ ai/           IAgentModelProvider, MockAgentModelProvider, AnthropicProvider,         │
 │               AIGateway (validation, retries, cost + prompt logging), output schemas  │
 │ analysis/     Poisson math, strategy models (observable data only), backtester        │
 │ sports/       ISportsDataProvider, MockSportsDataProvider, schedules, team data       │
-│ economy/      accounting, monthly close, valuation, runway, insolvency               │
+│ economy/      accounting, monthly close, valuation, runway, insolvency,              │
+│               market (how the city's news reaches the books), presets, facilities    │
 │ domain/       pure pydantic models (World aggregate and its parts)                   │
 │ persistence/  SQLAlchemy (SQLite now, PostgreSQL-ready): saves + AI call log          │
 └──────────────────────────────────────────────────────────────────────────────────────┘
@@ -46,7 +48,8 @@ See [DECISIONS.md](DECISIONS.md) for the full log. The short version:
 Each simulated day has four phases (see [SIMULATION_RULES.md](SIMULATION_RULES.md)):
 
 1. **08:00 morning** – month close (payroll, costs, subscriptions) on the 1st, CEO monthly review,
-   CEO weekly review on Mondays, sync fixtures/odds/news from the sports provider, LAB work.
+   CEO weekly review on Mondays, sync fixtures/odds/news from the sports provider, print the morning paper
+   (`simulation/city.py`, own RNG stream), LAB work.
 2. **11:00 analysis** – assign today's matches, run strategy models, share leanings with coworkers,
    tipsters decide BET / NO_BET (one AI call per tipster per day), paper bets are recorded.
 3. **16:00 matches** – kick-offs, closing odds captured, tipsters watch.
@@ -75,3 +78,8 @@ sports provider ──► World.matches (odds, results, news)          observabl
 * **Claude:** set `DESPORTO_AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`. Model per purpose is
   configurable (`ai/anthropic_provider.py`).
 * **PostgreSQL:** set `DESPORTO_DATABASE_URL=postgresql+psycopg://...`.
+* **A second dev stack next to a game in progress:** the `backend-dev` / `frontend-dev` entries in
+  `.claude/launch.json` run on ports 8001/5174 with their own `data/dev.db` (Vite reads `DESPORTO_API_PORT`
+  and `DESPORTO_UI_PORT`).
+* **Sandbox tools** live in `simulation/god.py`; `GET /api/god` lists what the backend supports so the UI never
+  offers a tool that does not exist.

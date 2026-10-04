@@ -90,6 +90,15 @@ Shared management rules (all styles, with style-specific thresholds):
   and may reopen a desk, instead of fading out.
 - LAB strategies go only to people who are losing, never twice in one review, and a tipster keeps a strategy at
   least 60 days (90 for the mock CEO's choice) before it can be swapped again.
+- **Office space** (monthly reviews only, at most one move): the aggressive expansionist takes the desk wing when
+  every room is full and loves the studio; the data-driven CEO opens the studio when the track record is worth
+  showing (ROI > 1 % over 300+ bets) and, when thriving, the canteen if stress or turnover is high; the conservative operator
+  only spends when thriving with a big cash buffer; the chaotic founder signs on a whim. In trouble, CEOs give
+  space back (conservative and data-driven most readily).
+- **The news**: the report includes the latest headlines, consumer confidence, the central bank rate and any
+  active effects. Data-driven and conservative CEOs cut marketing while a betting ad ban is in force.
+- **Meetings**: whoever a review touched, plus each desk's lead (the LAB joins monthly), sit with the CEO that
+  morning.
 | Chaotic founder | Impulsive firings and hires, random limits, dramatic memos. |
 
 ## Relationships

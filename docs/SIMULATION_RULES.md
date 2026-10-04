@@ -72,7 +72,7 @@ reviews and refused to a company in distress; giving one up costs a month's rent
 |---|---|
 | The Canteen | Everyone's stress settles 4 points lower; idle staff take late lunches there. |
 | East Desk Wing | A seventh desk room (and a corridor). |
-| Media Studio | +35% new subscribers; two tipsters record a morning show. |
+| Media Studio | +50% new subscribers; two tipsters record a morning show. |
 
 ## Sandbox tools
 

@@ -31,6 +31,16 @@ Start with `.\start.ps1` (or the Browser pane while a Claude session is running)
       screen and the history.
 - [ ] An **Easy** company should usually grow.
 
+## 6. The city, the office and the sandbox
+- [ ] At 23:30 everyone walks out of the front door (the day's P/L floats above the desks); at 08:00 they come back.
+- [ ] On a Monday morning the CEO meets the desk leads in the meeting room (one or two people: in the CEO's office).
+- [ ] **Paper** view: today's front page, markets table, results; *Previous* / *Next* browse back issues. The sidebar
+      shows today's headline (click it).
+- [ ] **CEO** view → *Office space*: what each east-wing space costs and does. When a CEO leases one, it appears on
+      the map (unleased lots say "FOR LEASE").
+- [ ] **Sandbox** button: try an investor, a disaster, a betting-stock crash (watch company value), plant a headline
+      and find it in the paper, open the canteen for free. Each shows up in History; the end screen counts them.
+
 ## What to report
 For anything odd: what you did, the in-game date, and a screenshot. The **History** and **AI log** views usually
 show why something happened.

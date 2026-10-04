@@ -44,7 +44,7 @@ def preset(difficulty: str) -> dict[str, float]:
 # Office space the CEO can lease in the empty east wing next door. Rent and food scale with cost_mult.
 FACILITIES: dict[str, dict[str, object]] = {
     "canteen": {
-        "name": "The Canteen", "fit_out": 900.0, "rent": 120.0, "per_head": 4.0,
+        "name": "The Canteen", "fit_out": 700.0, "rent": 90.0, "per_head": 3.0,
         "effect": "Hot lunches every day: everyone's stress settles lower.",
     },
     "desk_wing": {
@@ -52,10 +52,10 @@ FACILITIES: dict[str, dict[str, object]] = {
         "effect": "Room for a seventh betting desk.",
     },
     "studio": {
-        "name": "Media Studio", "fit_out": 1400.0, "rent": 140.0, "per_head": 0.0,
-        "effect": "Tipsters record a daily tips show: +35% new subscribers.",
+        "name": "Media Studio", "fit_out": 1200.0, "rent": 120.0, "per_head": 0.0,
+        "effect": "Tipsters record a daily tips show: +50% new subscribers.",
     },
 }
 CANTEEN_STRESS_RELIEF = 0.04  # lower stress target for everyone
-STUDIO_ACQUISITION = 1.35
+STUDIO_ACQUISITION = 1.5
 LEASE_BREAK_MONTHS = 1.0  # rent owed when a lease is given up early

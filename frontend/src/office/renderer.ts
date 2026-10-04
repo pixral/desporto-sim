@@ -143,7 +143,7 @@ export class OfficeRenderer {
   fit(): void {
     const { w, h } = this.sceneSize();
     const z = Math.min(this.cssW / w, this.cssH / h);
-    this.camera.zoom = Math.max(0.75, Math.floor(z * 8) / 8);
+    this.camera.zoom = Math.max(0.5, Math.floor(z * 8) / 8);
     this.camera.x = Math.round((this.cssW - w * this.camera.zoom) / 2);
     this.camera.y = Math.round((this.cssH - h * this.camera.zoom) / 2);
     this.userMoved = false;
@@ -151,7 +151,7 @@ export class OfficeRenderer {
 
   zoomAt(factor: number, mx: number, my: number): void {
     const old = this.camera.zoom;
-    const next = Math.max(0.75, Math.min(5, Math.round(old * factor * 4) / 4));
+    const next = Math.max(0.5, Math.min(5, Math.round(old * factor * 4) / 4));
     if (next === old) return;
     this.userMoved = true;
     const sx = (mx - this.camera.x) / old;

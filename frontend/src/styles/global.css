@@ -1211,8 +1211,12 @@ button.sandbox:hover {
   font-family: var(--font-body);
   font-size: 13px;
 }
+.god-grid select {
+  min-width: 120px;
+}
 .god-grid input[type="range"] {
   flex: 1;
+  min-width: 70px;
   accent-color: var(--drama);
 }
 .god-grid button.active {

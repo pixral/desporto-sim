@@ -498,12 +498,12 @@ def _ev_council(world, rng, d, jumps):
 # key, weight, needs a trading day, cooldown days, handler
 EVENTS: list[tuple[str, float, bool, int, Any]] = [
     ("tender", 1.0, True, 25, _ev_tender),
-    ("ad_ban", 0.04, True, 400, _ev_ad_ban),
+    ("ad_ban", 0.025, True, 500, _ev_ad_ban),
     ("ad_ban_lifted", 0.05, True, 30, _ev_ad_ban_lifted),
     ("fixing", 0.35, True, 90, _ev_fixing),
     ("record_weekend", 0.6, True, 30, _ev_record_weekend),
-    ("rival_collapse", 0.06, True, 300, _ev_rival_collapse),
-    ("data_hike", 0.05, True, 360, _ev_data_hike),
+    ("rival_collapse", 0.03, True, 360, _ev_rival_collapse),
+    ("data_hike", 0.04, True, 400, _ev_data_hike),
     ("data_outage", 0.3, True, 60, _ev_data_outage),
     ("ai", 0.6, True, 30, _ev_ai),
     ("rights", 0.35, True, 90, _ev_rights),

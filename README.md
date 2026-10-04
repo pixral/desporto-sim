@@ -40,6 +40,12 @@ API docs: http://127.0.0.1:8000/docs
   floating numbers show the day's P/L, desks glow while people work, and night falls during settlement.
   Click anyone for their panel, click a room for its department.
 - **Money**: company value, cash and bankroll over time, monthly results, cost breakdown, desks, reports.
+- **Paper**: *The Portavia Ledger*, the city's morning paper — stock market, business and city news, football
+  results, and the company in the press. Some stories really change the company (ad bans, rates, data prices,
+  rival collapses, bookmaker share prices).
+- **Sandbox** (top bar): investors, disasters, market shocks, planted headlines, morale, a star applicant, a new
+  CEO, free office space, difficulty. Everything is logged and counted on the end screen.
+- **East wing**: the CEO can lease a canteen, a seventh desk room and a media studio; they appear on the map.
 - **Staff**, **LAB** (experiments, audits, strategies), **History** (timeline of landmarks),
   **CEO** (every review: thought, memo, actions done/rejected), **AI log** (every prompt and response),
   **Saves**.
