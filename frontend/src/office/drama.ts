@@ -67,6 +67,10 @@ function shoutFor(e: HistoryEvent): { text: string; color: string } | null {
       return { text: "Raise!", color: GOOD };
     case "raise_refused":
       return { text: "Unbelievable…", color: BAD };
+    case "book_limit":
+      return { text: `${String(e.data.book ?? "They")} limited us!`, color: BAD };
+    case "book_limit_lifted":
+      return { text: "Limits back up!", color: GOOD };
     case "board_fires_ceo":
       return { text: "…the board?!", color: BAD };
     case "new_ceo":

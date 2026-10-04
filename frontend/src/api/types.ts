@@ -57,6 +57,7 @@ export interface DepartmentCard {
   head_id: string | null;
   active: boolean;
   headcount: number;
+  book_limits: Record<string, number>;
 }
 
 export interface HistoryEvent {
@@ -556,4 +557,5 @@ export interface DepartmentDetail {
   last90: PerfStats;
   members: EmployeeCard[];
   head: string | null;
+  book_limits: { book: string; limit: number; default: number; bets: number }[];
 }

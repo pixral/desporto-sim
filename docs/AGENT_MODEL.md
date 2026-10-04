@@ -97,6 +97,8 @@ Shared management rules (all styles, with style-specific thresholds):
   space back (conservative and data-driven most readily).
 - **The news**: the report includes the latest headlines, consumer confidence, the central bank rate and any
   active effects. Data-driven and conservative CEOs cut marketing while a betting ad ban is in force.
+- **Bookmaker limits**: a tipster's situation notes say when their desk is limited, and the CEO's report lists
+  each desk's limits. The engine books within them (see SIMULATION_RULES).
 - **Meetings**: whoever a review touched, plus each desk's lead (the LAB joins monthly), sit with the CEO that
   morning.
 | Chaotic founder | Impulsive firings and hires, random limits, dramatic memos. |

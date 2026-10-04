@@ -46,10 +46,13 @@ applicant, CEO swap, free space, difficulty). Recalibrated: studio and canteen c
 ablation, rare stories made rarer; Normal is neutral-to-better vs. the previous build (see ECONOMY.md).
 A second dev stack (`backend-dev`/`frontend-dev`, ports 8001/5174, `dev.db`) keeps a running game untouched.
 
+Later the same day: bookmakers limit winning desks (soft books cut stakes for desks that win their money, the
+sharp book only reins in runaways; shown in the desk panel, the history, the paper and as office bubbles), so
+Easy no longer compounds into €0.7M companies (best run now €176k), and Hard was softened (€16k capital, lower
+costs) so disciplined CEOs can survive it. Calibration table in ECONOMY.md.
+
 ## Next
 
-0. Bookmakers limit winning accounts (max stake per bet shrinks for desks that keep beating the closing line),
-   so Easy runs stop compounding into €0.7M companies; consider softening Hard (most companies collapse).
 1. Visual polish pass with fresh eyes on a long run (label overlap at small zoom, crowded Bench).
    Also show colleague influence and refusals visibly in the office (speech lines between desks).
 2. Run a short real Claude session (a few simulated days) to check prompt quality and cost per day.

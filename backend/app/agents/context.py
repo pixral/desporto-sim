@@ -16,6 +16,7 @@ from app.domain.people import Employee
 from app.domain.sports import Match
 from app.domain.strategy import PARAM_BOUNDS
 from app.domain.world import World
+from app.economy import bookmakers
 from app.economy import config as EC
 from app.economy import market
 from app.economy import valuation as val
@@ -93,6 +94,9 @@ def situation_notes(world: World, emp: Employee, recent: metrics.PerfStats) -> l
     if dept:
         verb = "lost" if dept.month_profit < 0 else "made"
         notes.append(f"The {dept.name} has {verb} €{abs(dept.month_profit):.0f} this month.")
+        limited = [f"{b} €{v:.0f}" for b, v in sorted(dept.book_limits.items()) if v < EC.BOOK_LIMITS.get(b, v)]
+        if limited:
+            notes.append("Bookmakers limit your desk's stakes per bet: " + ", ".join(limited) + ".")
     reviewing = any(e.under_review for e in world.tipsters()) or recent_layoffs(world, 21) > 0
     if reviewing:
         notes.append("Management is reviewing staff.")
@@ -259,6 +263,7 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
             "preferred_specialties": DEPARTMENT_KINDS[d.kind].specialties if d.kind in DEPARTMENT_KINDS else [],
             "bankroll": _r(d.bankroll, 2),
             "stake_limit_pct": _r(d.stake_limit_pct, 4), "profit_30d": _r(p30.profit, 2),
+            "bookmaker_limits": {b: bookmakers.limit(d, b) for b in EC.BOOK_LIMITS},
             "profit_90d": _r(p90.profit, 2), "roi_90d": _r(p90.roi), "bets_90d": p90.bets, "z_90d": _r(p90.z, 2),
             "headcount": len(members), "head": world.employees[d.head_id].name if d.head_id in world.employees else None,
             "age_days": (world.today - d.founded).days,

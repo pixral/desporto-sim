@@ -62,6 +62,33 @@ export function DepartmentPanel({ id }: { id: string }) {
                 </div>
               </div>
             )}
+            {d.kind !== "lab" && d.book_limits?.length > 0 && (
+              <div className="panel">
+                <h3>Bookmaker limits</h3>
+                <div className="muted" style={{ margin: "4px 0 8px" }}>
+                  Most a bookmaker accepts from this desk on one bet. Soft books cut it for desks that keep winning
+                  their money; bets then go to worse prices elsewhere.
+                </div>
+                <table>
+                  <tbody>
+                    {d.book_limits.map((b) => (
+                      <tr key={b.book}>
+                        <td>{b.book}</td>
+                        <td className="r">{eur(b.limit)}</td>
+                        <td className="r">
+                          {b.limit < b.default ? (
+                            <span className="pill lost">limited</span>
+                          ) : (
+                            <span className="muted">normal</span>
+                          )}
+                        </td>
+                        <td className="r muted">{b.bets} bets</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {Object.keys(d.profit_by_month).length > 0 && (
               <div className="panel">
                 <h3>Profit by month</h3>

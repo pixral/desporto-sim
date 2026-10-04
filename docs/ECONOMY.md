@@ -26,11 +26,11 @@ Europe, Markets), 30 % cash. 8 tipsters (random levels), 1 LAB researcher, a CEO
 
 | | Easy | Normal | Hard |
 |---|---|---|---|
-| Starting capital | €30,000 | €20,000 | €14,000 |
-| Salaries, rent, data feeds | ×0.85 | ×0.95 | ×1.10 |
-| Starting subscribers | 75 | 65 | 45 |
-| Subscriber acquisition / base churn | 0.50 / 6 % | 0.45 / 6.5 % | 0.38 / 7.5 % |
-| Bookmakers' use of xG | −0.15 (softer) | −0.06 | +0.08 (sharper) |
+| Starting capital | €30,000 | €20,000 | €16,000 |
+| Salaries, rent, data feeds | ×0.85 | ×0.95 | ×1.05 |
+| Starting subscribers | 75 | 65 | 50 |
+| Subscriber acquisition / base churn | 0.50 / 6 % | 0.45 / 6.5 % | 0.40 / 7 % |
+| Bookmakers' use of xG | −0.15 (softer) | −0.06 | +0.05 (sharper) |
 
 The football (fixtures, results, news) is identical across difficulties for a given seed; only prices and the
 company's economics change. Presets live in `economy/config.py` (`DIFFICULTY`).
@@ -96,25 +96,30 @@ starting capital, 10 % in distress, nothing when insolvent). Every emergency is 
 Runway = (cash + bankrolls − payables − debt) / average monthly net burn of the last 3 closed months
 (estimated fixed costs before the first close).
 
+## Bookmaker limits
+
+Each desk has a maximum stake per bet at each bookmaker (fresh: Atlas €2,000, Nordbet €600, Kicko €350).
+Soft books cut it for desks that won real money from them; Atlas only reins in runaways; losers slowly get
+limits back. Constants: `BOOK_LIMITS` / `BOOK_LIMIT_POLICY` in `economy/config.py`, logic in
+`economy/bookmakers.py`, rules in SIMULATION_RULES. They cap compounding: without them a soft-market Easy seed
+grew €30k into €0.76M in two years; with them the best Easy run ends at €176k, and Normal is unaffected.
+
 ## Calibration snapshot (2 years, mock AI)
 
-Measured 2026-10-04 after the city, office-space and drama rounds. Normal and Hard: 16 seeds per CEO style;
-Easy: 8 seeds. "Grew" = alive and worth more than the starting capital. Medians are the honest number: a few
-runaway companies dominate the means.
+Measured 2026-10-04 with the city, office space, drama and bookmaker limits. Normal and Hard: 16 seeds per CEO
+style; Easy: 8 seeds. "Grew" = alive and worth more than the starting capital. Medians are the honest number:
+a few runaway companies dominate the means.
 
-| CEO style | Easy (from €30k): bankrupt · grew · median | Normal (from €20k): bankrupt · grew · median | Hard (from €14k): bankrupt · grew · median |
+| CEO style | Easy (from €30k): bankrupt · grew · median | Normal (from €20k): bankrupt · grew · median | Hard (from €16k): bankrupt · grew · median |
 |---|---|---|---|
-| Conservative operator | 0/8 · 6/8 · €33.7k | 0/16 · 6/16 · €15.2k | 3/16 · 0/16 · €3.4k |
-| Aggressive expansionist | 0/8 · 4/8 · €32.6k | 1/16 · 5/16 · €13.8k | 11/16 · 0/16 · €3.6k |
-| Data-driven | 0/8 · 6/8 · €40.1k | 0/16 · 6/16 · €16.2k | 8/16 · 2/16 · €2.6k |
-| Chaotic founder | 0/8 · 4/8 · €50.5k | 0/16 · 3/16 · €13.7k | 10/16 · 0/16 · €3.4k |
+| Conservative operator | 0/8 · 6/8 · €34.4k | 0/16 · 5/16 · €15.7k | 2/16 · 0/16 · €9.3k |
+| Aggressive expansionist | 0/8 · 4/8 · €34.0k | 1/16 · 4/16 · €13.1k | 10/16 · 1/16 · €3.7k |
+| Data-driven | 0/8 · 5/8 · €35.9k | 0/16 · 5/16 · €16.8k | 3/16 · 3/16 · €5.9k |
+| Chaotic founder | 0/8 · 4/8 · €37.6k | 0/16 · 4/16 · €14.3k | 7/16 · 1/16 · €3.6k |
 
-Same build without the city and office features (Normal, 16 seeds): bankrupt 0/2/0/1, grew 5/3/5/5, medians
-€16.6k/€10.8k/€13.4k/€14.6k — so this round is neutral to slightly positive. The drop against the previous
-snapshot (Normal means €20–24k) came from the drama round (raises, poaching, board changes).
-
-Easy has runaway winners: seed 7 is an unusually soft market, ROI reaches 9–17 % and stakes grow with the
-bankroll, ending at €0.7M+. Bookmakers limiting winning accounts would be the realistic brake (roadmap).
-Hard is a survival game: most companies end at a fraction of their capital.
+For comparison, the build before the city/office round (Normal, 16 seeds): bankrupt 0/2/0/1, grew 5/3/5/5,
+medians €16.6k/€10.8k/€13.4k/€14.6k. The drop against the earliest snapshot (Normal means €20–24k) came from
+the drama round (raises, poaching, board changes). Easy is forgiving, Normal rewards good management, Hard is a
+survival game that disciplined CEOs can get through.
 
 Re-run with `python -m app.tools.batch --days 730 --seeds 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 --styles all --difficulty normal --quiet`.

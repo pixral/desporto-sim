@@ -22,6 +22,7 @@ class Department(Model):
     active: bool = True
     room_slot: int = 0
     head_id: str | None = None
+    book_limits: dict[str, float] = Field(default_factory=dict)  # max stake per bookmaker once limited
     total_staked: float = 0.0
     total_profit: float = 0.0
     bets: int = 0

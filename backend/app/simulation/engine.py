@@ -36,7 +36,7 @@ from app.domain.betting import Bet
 from app.domain.events import ManagementLog, Memo
 from app.domain.people import DecisionLog, Employee
 from app.domain.world import World
-from app.economy import accounting
+from app.economy import accounting, bookmakers
 from app.economy import market
 from app.economy import valuation as val
 from app.sports.provider import ISportsDataProvider
@@ -137,6 +137,7 @@ class SimulationEngine:
         self._sync_sports()
         city.morning(w)  # the paper: yesterday's markets, city news, football, our own story
         if d.day == 1 and w.clock.day_index > 0:
+            self._bookmaker_reviews()
             drama.monthly(w, self.rng)
             lab.run_audit(w)
             self._refresh_candidates(force=True)
@@ -150,6 +151,22 @@ class SimulationEngine:
         ceo = w.ceo()
         if ceo.status == "idle":
             ceo.status, ceo.task = "ceo_office", "Reading the morning paper"
+
+    def _bookmaker_reviews(self) -> None:
+        """Soft bookmakers cut the stakes they accept from desks that keep winning (and slowly forgive losers)."""
+        w = self.world
+        for dept, book, old, new in bookmakers.review_limits(w):
+            members = [e for e in w.department_members(dept.id) if e.role == "tipster"]
+            lead = next((e for e in members if e.id == dept.head_id), None) or (
+                max(members, key=lambda e: e.profit) if members else None)
+            who = [lead.id] if lead else []
+            if new < old:
+                history.record(w, "book_limit", f"{book} limits the {dept.name} to €{new:,.0f} a bet",
+                               f"Was €{old:,.0f}. Winning accounts get restricted; the desk will have to take worse "
+                               "prices elsewhere.", 2, "bad", who, dept.id, {"book": book, "limit": new})
+            else:
+                history.record(w, "book_limit_lifted", f"{book} raises the {dept.name}'s limit to €{new:,.0f}",
+                               f"Was €{old:,.0f}.", 1, "neutral", who, dept.id, {"book": book, "limit": new})
 
     def _studio_show(self) -> None:
         """With a media studio, the two in-form tipsters record the morning tips show for subscribers."""
@@ -238,14 +255,17 @@ class SimulationEngine:
                 stake = min(float(dec.stake or 0.0), max_stake, dept.bankroll)
                 if dec.stake and dec.stake > max_stake + 0.01:
                     notes.append(f"stake {dec.stake:.2f} clamped to limit {max_stake:.2f}")
+                choice = bookmakers.choose_book(dept, m, dec.market, stake) if best and stake >= 1.0 else None
                 if best is None:
                     notes.append("unknown market; treated as NO_BET")
                 elif bets_placed >= max_bets:
                     notes.append("daily bet limit reached; treated as NO_BET")
-                elif stake < 1.0:
+                elif choice is None or choice[2] < 1.0:
                     notes.append("stake below €1; treated as NO_BET")
                 else:
-                    book, price = best
+                    book, price, stake, limit_note = choice
+                    if limit_note:
+                        notes.append(limit_note)
                     if dec.odds and abs(dec.odds - price) / price > 0.03:
                         notes.append(f"quoted {dec.odds:.2f}, booked at best available {price:.2f}")
                     cand = next((c for c in row.candidates if c.market == dec.market), None)

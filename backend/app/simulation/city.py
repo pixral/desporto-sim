@@ -575,6 +575,7 @@ _COMPANY_HEADLINES = {
     "salary_cut": "{co} cuts salaries",
     "facility_leased": "{co} expands its offices",
     "season_awards": "{co} hands out its season awards",
+    "book_limit": "Bookmakers clamp down on {co}'s winners",
 }
 
 

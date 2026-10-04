@@ -22,7 +22,16 @@ fast), shutdown, bankruptcy (final).
 - Tipsters decide at 11:00 using only matches finished **before** that time, news already published,
   and the matchday prices. Closing prices and results are revealed only after kick-off / the final whistle.
 - Stakes are clamped to the CEO's limit and to the desk bankroll; the booked price is always the real best
-  price at decision time, whatever the agent quoted.
+  price at decision time that the desk's bookmaker limits allow, whatever the agent quoted.
+
+## Bookmaker limits
+
+Each desk has an account with each bookmaker. A fresh account may stake up to €2,000 a bet at Atlas, €600 at
+Nordbet and €350 at Kicko. On the 1st of each month the books look at the last 120 days: a desk that won at
+least €300 from a soft book on 40+ bets at ≥4% ROI gets its limit cut (Kicko to 35%, Nordbet to 50%, floors €10
+and €25); a desk that lost money there gets 30% back, up to the normal limit. Atlas is sharp, has the tightest
+prices and welcomes winners: it only cuts (to 60%, floor €300) a runaway that took €5,000+ from it at ≥6% ROI. Bets go to the best price whose limit takes the whole stake; if none does, the most
+generous book takes what it allows. Every change is in the history; the desk panel shows the limits.
 - Backtests are walk-forward with the same rule.
 
 ## The football world (mock provider)
