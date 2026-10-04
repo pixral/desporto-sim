@@ -201,7 +201,13 @@ export function ColumnChart({ data, height = 220, format }: { data: Column[]; he
   );
 }
 
-export function Sparkline({ values, width = 90, height = 22 }: { values: number[]; width?: number; height?: number }) {
+export function Sparkline({ values, width = 90, height = 22, color = "var(--muted)", dot = "var(--accent)" }: {
+  values: number[];
+  width?: number;
+  height?: number;
+  color?: string;
+  dot?: string;
+}) {
   if (values.length < 2) return null;
   const lo = Math.min(...values);
   const hi = Math.max(...values);
@@ -209,8 +215,8 @@ export function Sparkline({ values, width = 90, height = 22 }: { values: number[
   const last = pts[pts.length - 1];
   return (
     <svg width={width} height={height} aria-hidden>
-      <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--muted)" strokeWidth={1.5} />
-      <circle cx={last[0]} cy={last[1]} r={2.5} fill="var(--accent)" />
+      <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke={color} strokeWidth={1.5} />
+      <circle cx={last[0]} cy={last[1]} r={2.5} fill={dot} />
     </svg>
   );
 }

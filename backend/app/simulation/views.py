@@ -11,6 +11,8 @@ from app.agents.relationships import top_relationships
 from app.domain.betting import Bet
 from app.domain.people import Employee
 from app.domain.world import World
+from app.economy import config as EC
+from app.economy import market
 from app.economy import valuation as val
 
 from . import metrics
@@ -130,6 +132,37 @@ def state_view(world: World, runner: dict[str, Any] | None = None, providers: di
         "summary": world.summary.model_dump(mode="json") if world.summary else None,
         "latest_recap": ({"id": world.recaps[-1].id, "season": world.recaps[-1].season}
                          if world.recaps else None),
+        "office": office_view(world),
+        "city": city_brief(world),
+        "sandbox": {"god_actions": world.stats.god_actions},
+    }
+
+
+def office_view(world: World) -> dict[str, Any]:
+    mult = EC.preset(world.config.difficulty)["cost_mult"]
+    return {
+        "leased": {k: d.isoformat() for k, d in world.office.leased.items()},
+        "desk_rooms": market.desk_rooms(world),
+        "facilities": [{"key": k, "name": v["name"], "effect": v["effect"], "leased": market.leased(world, k),
+                        "since": world.office.leased[k].isoformat() if market.leased(world, k) else None,
+                        "fit_out": round(float(v["fit_out"]) * mult, 0),  # type: ignore[arg-type]
+                        "monthly_cost": round(market.facility_monthly_cost(world, k), 0)}
+                       for k, v in EC.FACILITIES.items()],
+    }
+
+
+def city_brief(world: World) -> dict[str, Any]:
+    city = world.city
+    latest = city.editions[-1] if city.editions else None
+    lead = next((p for p in reversed(city.press) if p.day == latest and p.lead), None) if latest else None
+    idx = city.index
+    return {
+        "paper": city.paper, "name": city.name, "edition": latest.isoformat() if latest else None,
+        "headline": lead.headline if lead else None,
+        "index": idx[-1] if idx else None,
+        "index_change": round(idx[-1] / idx[-2] - 1, 4) if len(idx) >= 2 else None,
+        "betting_sentiment": round(market.betting_sentiment(world), 3),
+        "modifiers": market.active_modifiers(world),
     }
 
 

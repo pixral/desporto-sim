@@ -14,8 +14,10 @@ function emp(id: string, status: string, department_id: string | null, desk_inde
   };
 }
 
-function state(employees: EmployeeCard[], phaseSeconds = 6): StateView {
+function state(employees: EmployeeCard[], phaseSeconds = 6, phase = "analysis"): StateView {
   return {
+    clock: { phase, date: "2026-08-14", time: phase === "settlement" ? "23:30" : "11:00" },
+    run: { ended: false },
     departments: [
       { id: "d1", name: "Germany Desk", kind: "germany", color: "#d8232a", room_slot: 0, active: true },
       { id: "d2", name: "Premier League Desk", kind: "england", color: "#6a2c91", room_slot: 1, active: true },
@@ -56,12 +58,37 @@ describe("actors", () => {
     expect(world.actors.get("a")!.moving).toBe(false);
   });
 
-  it("the CEO sits in the office and stands at the head of the table in meetings", () => {
+  it("the CEO meets one or two people in the office and a group in the meeting room", () => {
     const world = new ActorWorld(buildLayout(new Set([0])));
-    run(world, state([emp("c", "ceo_office", null, 0, "ceo")]), 0.2);
+    const ceo = (status: string) => emp("c", status, null, 0, "ceo");
+    run(world, state([ceo("ceo_office")]), 0.2);
     expect(world.actors.get("c")!.targetKey).toBe("ceo");
-    run(world, state([emp("c", "meeting", null, 0, "ceo")]), 0.2);
+    run(world, state([ceo("meeting")]), 0.2); // nobody to meet: stays at the desk
+    expect(world.actors.get("c")!.targetKey).toBe("ceo");
+    run(world, state([ceo("meeting"), emp("a", "meeting", "d1")]), 0.2);
+    expect(world.actors.get("c")!.targetKey).toBe("ceo");
+    expect(world.actors.get("a")!.targetKey).toBe("ceo-v0");
+    const group = ["a", "b", "d"].map((id) => emp(id, "meeting", "d1"));
+    run(world, state([ceo("meeting"), ...group]), 0.2);
     expect(world.actors.get("c")!.targetKey).toBe("meet-head");
+    expect(world.actors.get("a")!.targetKey.startsWith("meet-")).toBe(true);
+  });
+
+  it("everyone goes home at night and walks back in the next morning", () => {
+    const world = new ActorWorld(buildLayout(new Set([0])));
+    run(world, state([emp("a", "working", "d1"), emp("c", "ceo_office", null, 0, "ceo")]), 3);
+    run(world, state([emp("a", "celebrating", "d1"), emp("c", "ceo_office", null, 0, "ceo")], 6, "settlement"), 8);
+    const a = world.actors.get("a")!;
+    expect(a.targetKey).toBe("home");
+    expect(a.away).toBe(true);
+    expect(a.alpha).toBe(0);
+    expect(world.actors.get("c")!.away).toBe(true);
+    run(world, state([emp("a", "idle", "d1"), emp("c", "ceo_office", null, 0, "ceo")], 6, "morning"), 0.05);
+    expect(a.away).toBe(false);
+    expect(Math.abs(a.x - 34.5) + Math.abs(a.y - 24.5)).toBeLessThan(1.5); // came in through the front door
+    run(world, state([emp("a", "idle", "d1"), emp("c", "ceo_office", null, 0, "ceo")], 6, "morning"), 6);
+    expect(a.alpha).toBe(1);
+    expect(a.moving).toBe(false);
   });
 
   it("fired people walk to the exit and fade out", () => {

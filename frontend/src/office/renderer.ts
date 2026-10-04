@@ -9,13 +9,16 @@ import {
   iso,
   MAP_H,
   MAP_W,
+  MARGIN,
+  ORIGIN_X,
+  ORIGIN_Y,
   OUTER_WALL_H,
   SCENE_H,
   SCENE_W,
   unIso,
   type Pt,
 } from "./iso";
-import { buildLayout, roomAt, SLOT_ORIGINS, SLOT_W, type Furniture, type Layout } from "./layout";
+import { ANNEX_X, buildLayout, LOTS, roomAt, SLOT_ORIGINS, SLOT_W, type Furniture, type Layout } from "./layout";
 import { fillPoly, isoBox, makeCanvas, mix, shade, tileDiamond, type Ctx } from "./pixel";
 import { characterFrames, icon, prerenderFurniture, type IconKind, type Prerendered } from "./sprites";
 
@@ -43,6 +46,9 @@ const FLOORS: Record<string, [string, string]> = {
   corridor: ["#5a4e60", "#61556a"],
   desk: ["#a87a52", "#9f7249"],
   vacant: ["#3f3846", "#443c4b"],
+  canteen: ["#e6dfcf", "#ddd4c1"],
+  studio: ["#2b2838", "#312d40"],
+  lot: ["#3a3540", "#35313b"],
 };
 
 const WALL = { cap: "#efe3cf", faceX: "#cdb89a", faceY: "#b5a083", end: "#a38e72", outerX: "#d9c6a6", outerY: "#bfa985" };
@@ -57,6 +63,7 @@ const STATUS_ICON: Record<string, IconKind> = {
   meeting: "dots",
   researching: "bulb",
   ceo_office: "chart",
+  studio: "mic",
 };
 
 const GLOW: Record<string, string> = {
@@ -127,11 +134,18 @@ export class OfficeRenderer {
     if (!this.userMoved) this.fit();
   }
 
+  /** Size of the part of the scene the building occupies (it grows when the east wing is leased). */
+  private sceneSize(): { w: number; h: number } {
+    const width = this.layout.width;
+    return { w: ORIGIN_X + width * 16 + MARGIN, h: ORIGIN_Y + (width + MAP_H) * 8 + MARGIN };
+  }
+
   fit(): void {
-    const z = Math.min(this.cssW / SCENE_W, this.cssH / SCENE_H);
-    this.camera.zoom = Math.max(0.75, Math.floor(z * 4) / 4);
-    this.camera.x = Math.round((this.cssW - SCENE_W * this.camera.zoom) / 2);
-    this.camera.y = Math.round((this.cssH - SCENE_H * this.camera.zoom) / 2);
+    const { w, h } = this.sceneSize();
+    const z = Math.min(this.cssW / w, this.cssH / h);
+    this.camera.zoom = Math.max(0.75, Math.floor(z * 8) / 8);
+    this.camera.x = Math.round((this.cssW - w * this.camera.zoom) / 2);
+    this.camera.y = Math.round((this.cssH - h * this.camera.zoom) / 2);
     this.userMoved = false;
   }
 
@@ -145,6 +159,15 @@ export class OfficeRenderer {
     this.camera.zoom = next;
     this.camera.x = Math.round(mx - sx * next);
     this.camera.y = Math.round(my - sy * next);
+  }
+
+  /** Centre the camera on a tile at the given zoom. */
+  focusTile(x: number, y: number, zoom: number): void {
+    const p = iso(x, y);
+    this.userMoved = true;
+    this.camera.zoom = zoom;
+    this.camera.x = Math.round(this.cssW / 2 - p.x * zoom);
+    this.camera.y = Math.round(this.cssH / 2 - (p.y - 10) * zoom);
   }
 
   pan(dx: number, dy: number): void {
@@ -184,10 +207,13 @@ export class OfficeRenderer {
   // ------------------------------------------------------------------ static layers
   private ensureLayout(state: StateView): void {
     const desks = state.departments.filter((d) => d.kind !== "lab" && d.active);
-    const key = desks.map((d) => `${d.room_slot}:${d.color}`).sort().join("|");
+    const leased = Object.keys(state.office?.leased ?? {}).sort();
+    const key = desks.map((d) => `${d.room_slot}:${d.color}`).sort().join("|") + "#" + leased.join(",");
     if (key === this.layoutKey && this.floor) return;
     this.layoutKey = key;
-    this.layout = buildLayout(new Set(desks.map((d) => d.room_slot)));
+    const widthBefore = this.layout.width;
+    this.layout = buildLayout(new Set(desks.map((d) => d.room_slot)), new Set(leased));
+    if (this.layout.width !== widthBefore && !this.userMoved) this.fit();
     this.actors.setLayout(this.layout);
     const colorBySlot = new Map(desks.map((d) => [d.room_slot, d.color]));
     this.buildFloor(colorBySlot);
@@ -222,7 +248,7 @@ export class OfficeRenderer {
     const c = makeCanvas(SCENE_W, SCENE_H);
     const ctx = c.getContext("2d")!;
     for (let y = 0; y < MAP_H; y++) {
-      for (let x = 0; x < MAP_W; x++) {
+      for (let x = 0; x < this.layout.width; x++) {
         const room = this.layout.roomGrid[y * MAP_W + x];
         if (!room) continue;
         let pal = FLOORS[room.kind];
@@ -233,15 +259,25 @@ export class OfficeRenderer {
         const plank = room.kind === "desk" || room.kind === "ceo" ? x % 2 : (x + y) % 2;
         tileDiamond(ctx, x, y, pal[plank]);
         if (room.kind === "lab") tileDiamond(ctx, x, y, shade(pal[0], 0.08), 0.42);
+        if (room.kind === "canteen" && plank) tileDiamond(ctx, x, y, "#c9734f", 0.38);
+        if (room.kind === "lot" && (x * 7 + y * 3) % 5 === 0) tileDiamond(ctx, x, y, "#423c48", 0.35); // dust
       }
     }
-    // coloured runner inside each active desk room, by the door
+    // a doormat just inside each desk room's door, in the desk's colour
     for (const [slot, col] of colorBySlot) {
       const o = SLOT_ORIGINS[slot];
-      for (let x = o.x + 9; x <= o.x + 10; x++) for (let y = o.y; y < o.y + 3; y++) tileDiamond(ctx, x, y, shade(col, -0.15), 0.08);
+      this.doormat(ctx, o.x + 9, o.y, 2, 1, "#2f2735", shade(col, -0.3), shade(col, -0.05));
     }
+    this.doormat(ctx, 33, 24, 3, 1, "#2f2735", "#6e3a30", "#9a5a44"); // street entrance
     this.drawOuterWalls(ctx);
     this.floor = c;
+  }
+
+  private doormat(ctx: Ctx, x: number, y: number, w: number, d: number, edge: string, inner: string, stripe: string): void {
+    const quad = (u0: number, v0: number, u1: number, v1: number) => [iso(u0, v0), iso(u1, v0), iso(u1, v1), iso(u0, v1)];
+    fillPoly(ctx, quad(x + 0.12, y + 0.18, x + w - 0.12, y + d - 0.12), edge);
+    fillPoly(ctx, quad(x + 0.24, y + 0.3, x + w - 0.24, y + d - 0.24), inner);
+    fillPoly(ctx, quad(x + 0.24, y + 0.47, x + w - 0.24, y + 0.53), stripe);
   }
 
   private wallN(u0: number, u1: number, v0: number, v1: number): Pt[] {
@@ -268,15 +304,17 @@ export class OfficeRenderer {
 
   private drawOuterWalls(ctx: Ctx): void {
     const H = OUTER_WALL_H;
-    for (let x = 0; x < MAP_W; x++) isoBox(ctx, x, -0.15, 1, 0.15, H, { top: WALL.cap, left: WALL.outerX, right: WALL.end });
+    const width = this.layout.width;
+    for (let x = 0; x < width; x++) isoBox(ctx, x, -0.15, 1, 0.15, H, { top: WALL.cap, left: WALL.outerX, right: WALL.end });
     for (let y = 0; y < MAP_H; y++) isoBox(ctx, -0.15, y, 0.15, 1, H, { top: WALL.cap, left: WALL.end, right: WALL.outerY });
     isoBox(ctx, -0.15, -0.15, 0.15, 0.15, H, { top: WALL.cap, left: WALL.end, right: WALL.end });
     // baseboards
-    fillPoly(ctx, this.wallN(0, MAP_W, 0, 3), "#8a7258");
+    fillPoly(ctx, this.wallN(0, width, 0, 3), "#8a7258");
     fillPoly(ctx, this.wallW(0, MAP_H, 0, 3), "#76614a");
     // windows (glass painted every frame)
     this.windows = [];
     const winN = [[2.2, 4.8], [27.2, 28.8], [30.2, 31.8], [33.2, 34.8]];
+    if (width > ANNEX_X) winN.push([42.2, 43.8], [45.2, 46.6]);
     for (const [a, b] of winN) {
       fillPoly(ctx, this.wallN(a - 0.08, b + 0.08, 12, 38), "#6e5a44");
       this.windows.push(this.wallN(a, b, 14, 36));
@@ -306,6 +344,12 @@ export class OfficeRenderer {
     fillPoly(ctx, this.wallW(7.35, 8.65, 21, 29), "#f2a541");
     fillPoly(ctx, this.wallW(16.3, 17.7, 16, 34), "#c25b9a"); // poster
     fillPoly(ctx, this.wallW(16.5, 17.5, 20, 30), "#fdf6e3");
+    if (this.layout.leased.has("canteen")) {
+      // the menu board above the counter
+      fillPoly(ctx, this.wallN(37.2, 41.6, 16, 36), "#2b2633");
+      for (let i = 0; i < 4; i++) fillPoly(ctx, this.wallN(37.6, 39.4 + (i % 2) * 1.2, 30 - i * 4, 31 - i * 4), "#efe9dc");
+      fillPoly(ctx, this.wallN(40.3, 41.2, 18, 33), "#d4573a");
+    }
   }
 
   // ------------------------------------------------------------------ frame
@@ -592,9 +636,10 @@ export class OfficeRenderer {
       const a = occupied.get(key)!;
       glow(iso(a.x + 0.5, a.y + 0.6), 26, "rgba(255,200,120,A)", 0.45);
     }
-    for (const p of [iso(6, 8), iso(17, 8), iso(28, 8), iso(6, 17), iso(17, 17), iso(28, 17), iso(34.5, 12), iso(34.5, 21)]) {
-      glow(p, 34, "rgba(255,214,150,A)", 0.3);
-    }
+    const lamps = [iso(6, 8), iso(17, 8), iso(28, 8), iso(6, 17), iso(17, 17), iso(28, 17), iso(34.5, 12), iso(34.5, 21)];
+    if (this.layout.leased.has("desk_wing")) lamps.push(iso(41, 8));
+    if (this.layout.leased.has("studio")) lamps.push(iso(41, 17));
+    for (const p of lamps) glow(p, 34, "rgba(255,214,150,A)", 0.3);
     ctx.restore();
   }
 
@@ -629,12 +674,28 @@ export class OfficeRenderer {
       [21, "LAB", "#0b6e77"],
       [31, "THE BENCH", "#3f5c33"],
     ];
+    if (this.layout.leased.has("canteen")) roomPlates.push([41.5, "THE CANTEEN", "#8a3b2a"]);
     for (const [u, label, col] of roomPlates) {
       const base = iso(u, 0);
       plate({ x: base.x, y: base.y - OUTER_WALL_H - 3 }, label, null, col);
     }
+    // east wing: the studio and the lots still for lease
+    if (this.layout.width > ANNEX_X) {
+      const facilities = state.office?.facilities ?? [];
+      for (const [key, lot] of Object.entries(LOTS)) {
+        if (this.layout.leased.has(key)) continue;
+        const base = iso(ANNEX_X + 5.5, (lot.y0 + lot.y1) / 2);
+        const f = facilities.find((x) => x.key === key);
+        plate({ x: base.x, y: base.y }, "FOR LEASE", f ? `${f.name} · €${f.monthly_cost}/mo` : lot.label, "#3a3344", "#b6abc4");
+      }
+      if (this.layout.leased.has("studio")) {
+        const base = iso(ANNEX_X + 5.5, 18);
+        plate({ x: base.x, y: base.y - INNER_WALL_H - 4 }, "MEDIA STUDIO", "on air every morning", "#4b2d63", "#ff8ad8");
+      }
+    }
     // desk rooms
     SLOT_ORIGINS.forEach((o, slot) => {
+      if (slot === 6 && !this.layout.leased.has("desk_wing")) return;
       const dept = state.departments.find((d) => d.room_slot === slot && d.kind !== "lab" && d.active);
       const base = iso(o.x + SLOT_W / 2, o.y);
       const at = { x: base.x, y: base.y - INNER_WALL_H - 4 };
@@ -643,7 +704,7 @@ export class OfficeRenderer {
         const sub = `month ${m >= 0 ? "+" : "-"}€${Math.abs(m).toFixed(0)}`;
         plate(at, dept.name.toUpperCase(), sub, shade(dept.color, -0.35), m >= 0 ? "#7cf0a0" : "#ff8a8a");
       } else {
-        plate(at, "VACANT", "for lease", "#3a3344", "#b6abc4");
+        plate(at, "EMPTY ROOM", "no desk yet", "#3a3344", "#b6abc4");
       }
     });
     // speech bubbles for events
@@ -676,6 +737,20 @@ export class OfficeRenderer {
     const nameFont = Math.round(Math.max(10, Math.min(16, 6 * z)));
     const floatFont = Math.round(Math.max(13, Math.min(26, 9 * z)));
     for (const a of this.actors.actors.values()) {
+      for (const f of a.floaters) {
+        // the day's P/L floats up from where the person was when the results came in
+        const t = (now - f.born) / 2600;
+        const at = this.toScreen(iso(f.x, f.y));
+        const y = at.y - 30 * z - t * 22 * z;
+        ctx.globalAlpha = Math.max(0, 1 - t * t);
+        ctx.font = `${floatFont}px VT323, monospace`;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "#1b1426";
+        ctx.strokeText(f.text, at.x, y);
+        ctx.fillStyle = f.color;
+        ctx.fillText(f.text, at.x, y);
+        ctx.globalAlpha = 1;
+      }
       if (a.alpha <= 0.05) continue;
       const feet = this.toScreen(iso(a.x, a.y));
       const show = this.showNames || z >= 2.75 || a.id === this.hoveredId || a.id === this.selectedId;
@@ -688,18 +763,6 @@ export class OfficeRenderer {
         ctx.fillRect(Math.round(feet.x - w / 2), Math.round(feet.y + 3), Math.round(w), nameFont);
         ctx.fillStyle = a.emp.role === "ceo" ? "#ffd25a" : "#fdf6e3";
         ctx.fillText(text, feet.x, feet.y + 3 + nameFont / 2);
-        ctx.globalAlpha = 1;
-      }
-      for (const f of a.floaters) {
-        const t = (now - f.born) / 2600;
-        const y = feet.y - 30 * z - t * 22 * z;
-        ctx.globalAlpha = Math.max(0, 1 - t * t);
-        ctx.font = `${floatFont}px VT323, monospace`;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "#1b1426";
-        ctx.strokeText(f.text, feet.x, y);
-        ctx.fillStyle = f.color;
-        ctx.fillText(f.text, feet.x, y);
         ctx.globalAlpha = 1;
       }
     }

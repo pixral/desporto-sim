@@ -15,7 +15,7 @@ from app.domain.world import RunConfig, World
 from app.persistence.repository import Repository
 from app.sports.provider import ISportsDataProvider
 
-from . import views
+from . import god, views
 from .engine import SimulationEngine
 from .factory import create_world
 
@@ -126,6 +126,15 @@ class SimulationRunner:
                     await self._do_step(publish=False)
         self._wake.set()
         await self.publish(force=True)
+
+    async def god(self, action: str, params: dict[str, Any]) -> str:
+        """Apply a sandbox intervention between two simulation steps."""
+        if self.engine is None:
+            raise god.GodError("no company loaded")
+        async with self.lock:
+            message = god.apply(self.engine.world, self.engine.rng, action, params)
+        await self.publish(force=True)
+        return message
 
     def runner_state(self) -> dict[str, Any]:
         return {"running": self.running, "speed": self.speed, "speeds": list(SPEEDS),

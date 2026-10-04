@@ -37,10 +37,11 @@ from app.domain.events import ManagementLog, Memo
 from app.domain.people import DecisionLog, Employee
 from app.domain.world import World
 from app.economy import accounting
+from app.economy import market
 from app.economy import valuation as val
 from app.sports.provider import ISportsDataProvider
 
-from . import drama, history, lab, metrics
+from . import city, drama, history, lab, metrics
 from .rng import dump_rng, load_rng
 from .summary import build_summary
 
@@ -134,6 +135,7 @@ class SimulationEngine:
             if w.ended:
                 return
         self._sync_sports()
+        city.morning(w)  # the paper: yesterday's markets, city news, football, our own story
         if d.day == 1 and w.clock.day_index > 0:
             drama.monthly(w, self.rng)
             lab.run_audit(w)
@@ -144,13 +146,25 @@ class SimulationEngine:
             self._refresh_candidates(force=False)
             await self._ceo_review("weekly")
         await lab.lab_morning(w, self.index, self.popular, self.gateway, self.rng)
+        self._studio_show()
         ceo = w.ceo()
         if ceo.status == "idle":
-            ceo.status, ceo.task = "ceo_office", "Reading the overnight numbers"
+            ceo.status, ceo.task = "ceo_office", "Reading the morning paper"
+
+    def _studio_show(self) -> None:
+        """With a media studio, the two in-form tipsters record the morning tips show for subscribers."""
+        w = self.world
+        if not market.leased(w, "studio"):
+            return
+        free = [e for e in w.tipsters() if e.status == "idle"]
+        for e in sorted(free, key=lambda e: (-e.month_profit, e.id))[:2]:
+            e.status, e.task = "studio", "Recording the morning tips show"
 
     async def _analysis(self) -> None:
         w = self.world
         today = w.today
+        ceo = w.ceo()
+        ceo.status, ceo.task = "ceo_office", "Following the desks' picks"  # the morning meeting is over
         todays = sorted((m for m in w.matches.values()
                          if m.kickoff.date() == today and m.status == "scheduled" and m.odds),
                         key=lambda m: (m.kickoff, m.id))
@@ -293,8 +307,7 @@ class SimulationEngine:
             elif e.status != "stressed":
                 e.status, e.task = "idle", "Taking a break"
         ceo = w.ceo()
-        if ceo.status not in ("meeting",):
-            ceo.status, ceo.task = "ceo_office", "Reviewing desk exposure"
+        ceo.status, ceo.task = "ceo_office", "Reviewing desk exposure"
 
     async def _settlement(self) -> None:
         w = self.world
@@ -352,6 +365,7 @@ class SimulationEngine:
         distress = psychology.STATUS_DISTRESS.get(w.finances.status, 0.2)
         thriving = w.finances.status == "thriving"
         layoffs = recent_layoffs(w)
+        canteen = market.leased(w, "canteen")
         for e in sorted(w.active_employees(), key=lambda e: e.id):
             if e.role == "tipster":
                 recent = metrics.recent_stats(w, e, 50)
@@ -359,7 +373,7 @@ class SimulationEngine:
                 psychology.daily_update(e, psychology.DayContext(
                     distress=distress, company_thriving=thriving,
                     dept_month_profit=dept.month_profit if dept else 0.0, recent_layoffs=layoffs,
-                    recent_roi=recent.roi, recent_bets=recent.bets, day_profit=e.day_profit))
+                    recent_roi=recent.roi, recent_bets=recent.bets, day_profit=e.day_profit, canteen=canteen))
                 if e.day_profit:
                     e.pnl_flash_seq += 1
                     e.status = "celebrating" if e.day_profit > 0 else "frustrated"
@@ -367,7 +381,7 @@ class SimulationEngine:
                 if e.psyche.stress > 0.75:
                     e.status = "stressed"
             elif e.role == "researcher":
-                psychology.researcher_daily_update(e, distress, w.finances.lab_budget / 60.0)
+                psychology.researcher_daily_update(e, distress, w.finances.lab_budget / 60.0, canteen)
             e.series.append([w.clock.day_index, round(e.profit, 2), round(e.psyche.reputation, 1),
                              round(e.psyche.stress, 3), round(e.psyche.confidence, 3)])
             if len(e.series) > 1500:
@@ -430,10 +444,8 @@ class SimulationEngine:
             w.memos.append(Memo(time=w.clock.now, author_id=ceo.id, scope=scope, text=out.memo.strip()[:800]))
             w.memos = w.memos[-60:]
             history.record(w, "memo", f"CEO memo ({scope})", out.memo.strip()[:800], 1, "neutral", [ceo.id])
-        touched = {a.params.get("employee_id") for a in records if a.applied}
-        for e in w.active_employees():
-            if e.id in touched and e.role != "ceo":
-                e.status, e.task = "meeting", "Called into the CEO's office"
+        touched = {str(a.params.get("employee_id")) for a in records if a.applied and a.params.get("employee_id")}
+        drama.gather_meeting(w, scope, touched)
         if scope == "monthly":
             cleanup_candidate_strategies(w, set())
 

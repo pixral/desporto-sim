@@ -4,6 +4,9 @@ import type {
   AiCallSummary,
   EmployeeDetail,
   FinanceView,
+  GodCatalog,
+  NewspaperView,
+  OfficeView,
   HistoryEvent,
   LabView,
   ManagementEntry,
@@ -53,6 +56,14 @@ export const api = {
   save: (label: string) => req<{ save_id: number }>("/api/saves", { method: "POST", body: JSON.stringify({ label }) }),
   load: (id: number) => req<{ run_id: string }>(`/api/saves/${id}/load`, { method: "POST" }),
   deleteSave: (id: number) => req<{ deleted: number }>(`/api/saves/${id}`, { method: "DELETE" }),
+  newspaper: (day?: string) => req<NewspaperView>(`/api/newspaper${day ? `?day=${day}` : ""}`),
+  office: () => req<OfficeView>("/api/office"),
+  godCatalog: () => req<GodCatalog>("/api/god"),
+  god: (action: string, params: Record<string, unknown> = {}) =>
+    req<{ ok: boolean; message: string; god_actions: number }>("/api/god", {
+      method: "POST",
+      body: JSON.stringify({ action, params }),
+    }),
   newRun: (body: Record<string, unknown>) =>
     req<{ run_id: string }>("/api/runs", { method: "POST", body: JSON.stringify(body) }),
 };

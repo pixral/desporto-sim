@@ -101,13 +101,19 @@ def ceo_user(ctx: dict[str, Any]) -> str:
     lines += ["", "DEPARTMENT KINDS YOU COULD OPEN", json.dumps(ctx["available_department_kinds"])]
     lines += ["", "LIMITS", json.dumps(ctx["limits"])]
     lines += ["", "RECENT EVENTS"] + [f"- {e}" for e in ctx["recent_events"]]
+    if "office" in ctx:
+        lines += ["", "OFFICE SPACE (the east wing next door is for lease)", json.dumps(ctx["office"], ensure_ascii=False)]
+    if "city" in ctx:
+        lines += ["", "THE CITY (this morning's paper and the economy)", json.dumps(ctx["city"], ensure_ascii=False)]
     lines += ["", "ACTIONS: FIRE(employee_id) HIRE(candidate_id, department_id) PROMOTE(employee_id) WARN(employee_id) "
               "CLEAR_REVIEW(employee_id) TRANSFER_EMPLOYEE(employee_id, department_id) SET_STAKE_LIMIT(department_id, pct) "
               "FUND_DEPARTMENT(department_id, amount) WITHDRAW_BANKROLL(department_id, amount) "
               "CREATE_DEPARTMENT(department_kind, amount) CLOSE_DEPARTMENT(department_id) SET_LAB_BUDGET(amount) "
               "SET_MARKETING_BUDGET(amount) DEPLOY_STRATEGY(experiment_id, employee_id) "
               "ADJUST_STRATEGY(employee_id, field, value) FREEZE_HIRING UNFREEZE_HIRING CUT_SALARIES(pct) "
-              "TAKE_LOAN(amount) REPAY_LOAN(amount). Each action may include a short reason.",
+              "TAKE_LOAN(amount) REPAY_LOAN(amount) LEASE_SPACE(facility) RELEASE_SPACE(facility) "
+              "(facility: canteen, desk_wing or studio; leases only at monthly reviews). "
+              "Each action may include a short reason.",
               "Respond with JSON: {\"thought\": str, \"memo\": str, \"actions\": [ ... ]}"]
     return "\n".join(lines)
 

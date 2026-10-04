@@ -5,6 +5,7 @@ import { dayMonth, MARKET_LABEL, signedEur } from "../util/format";
 export function Sidebar() {
   const state = useStore((s) => s.state);
   const selectEmployee = useStore((s) => s.selectEmployee);
+  const setTab = useStore((s) => s.setTab);
   const [notableOnly, setNotableOnly] = useState(false);
   if (!state) return <aside className="sidebar" />;
   const ceo = state.employees.find((e) => e.role === "ceo");
@@ -20,6 +21,12 @@ export function Sidebar() {
             {state.memo.scope} review · {dayMonth(state.memo.time)}
           </div>
         </div>
+      )}
+      {state.city.headline && (
+        <button className="paper-teaser" onClick={() => setTab("paper")} title="Read the morning paper">
+          <span className="paper-name">{state.city.paper}</span>
+          <span>{state.city.headline}</span>
+        </button>
       )}
       {state.ceo_thought && (
         <div className="thought" title="The CEO's private read of the situation">

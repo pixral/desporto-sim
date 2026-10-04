@@ -2,7 +2,7 @@
 
 export const TW = 32; // tile width in native pixels
 export const TH = 16; // tile height in native pixels
-export const MAP_W = 36;
+export const MAP_W = 47; // the grid includes the east wing next door (x 36-46)
 export const MAP_H = 25;
 export const MARGIN = 24;
 export const OUTER_WALL_H = 46;

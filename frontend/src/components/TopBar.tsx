@@ -9,6 +9,7 @@ export function TopBar() {
   const connected = useStore((s) => s.connected);
   const notify = useStore((s) => s.notify);
   const setShowNewRun = useStore((s) => s.setShowNewRun);
+  const setGodOpen = useStore((s) => s.setGodOpen);
   if (!state) return <div className="topbar" />;
   const { run, clock, runner, kpis } = state;
 
@@ -74,6 +75,9 @@ export function TopBar() {
       </div>
       <div className="spacer" />
       <span className={`status-badge st-${kpis.status}`}>{STATUS_LABEL[kpis.status]}</span>
+      <button className="sandbox" onClick={() => setGodOpen(true)} title="Sandbox tools: disasters, investors, market shocks…">
+        Sandbox{state.sandbox.god_actions ? ` · ${state.sandbox.god_actions}` : ""}
+      </button>
       <button onClick={save} disabled={run.ended}>
         Save
       </button>

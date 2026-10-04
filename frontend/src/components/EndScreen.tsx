@@ -28,11 +28,12 @@ export function EndScreen() {
     ["Seasons completed", String(s.seasons ?? 0)],
     ["AI calls / cost", `${s.ai_calls.toLocaleString()} / $${s.ai_cost_usd.toFixed(2)}`],
   ];
+  if (s.god_actions) rows.push(["Sandbox interventions", String(s.god_actions)]);
   return (
     <div className="modal-backdrop">
       <div className="end-card" role="dialog" aria-label="Run summary">
         <div className="muted" style={{ fontFamily: "var(--font-head)", fontSize: 12 }}>
-          BANKRUPT
+          BANKRUPT{s.god_actions ? " · SANDBOX RUN" : ""}
         </div>
         <h1>{s.company_name.toUpperCase()}</h1>
         <div className="days">{s.days_survived} days survived</div>

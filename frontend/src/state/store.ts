@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { StateView } from "../api/types";
 
-export type Tab = "office" | "dashboard" | "staff" | "lab" | "history" | "ceo" | "ai" | "saves";
+export type Tab = "office" | "dashboard" | "staff" | "lab" | "history" | "ceo" | "paper" | "ai" | "saves";
 
 interface Store {
   state: StateView | null;
@@ -14,6 +14,8 @@ interface Store {
   toast: string | null;
   recapOpen: string | null;
   setRecapOpen: (id: string | null) => void;
+  godOpen: boolean;
+  setGodOpen: (v: boolean) => void;
   setState: (s: StateView) => void;
   setConnected: (c: boolean) => void;
   setTab: (t: Tab) => void;
@@ -35,6 +37,8 @@ export const useStore = create<Store>((set) => ({
   toast: null,
   recapOpen: null,
   setRecapOpen: (id) => set({ recapOpen: id }),
+  godOpen: false,
+  setGodOpen: (v) => set({ godOpen: v }),
   setState: (s) => set({ state: s }),
   setConnected: (c) => set({ connected: c }),
   setTab: (t) => set({ tab: t }),

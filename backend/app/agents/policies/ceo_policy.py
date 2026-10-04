@@ -177,6 +177,9 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
             1.3 if thriving and style == "data_driven" else 1.0)
         mkt_target = st["marketing"] * (1.4 if thriving and style == "aggressive_expansionist" else 1.0) * (
             0.5 if in_trouble and style in ("conservative_operator", "data_driven") else 1.0)
+        city_effects = " ".join(ctx.get("city", {}).get("active_effects", [])).lower()
+        if "advertising ban" in city_effects and style != "aggressive_expansionist":
+            mkt_target *= 0.6  # adverts reach fewer people while the ban lasts
         if style == "chaotic_founder" and rng.random() < 0.3:
             lab_target, mkt_target = rng.uniform(20, 160), rng.uniform(20, 260)
         if abs(lab_target - co["lab_budget"]) > 10:
@@ -293,6 +296,10 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
                 kind = rng.choice(kinds)
                 plan.add("CREATE_DEPARTMENT", f"Reopening with a {kind['name']}: we need more shots on goal.",
                          department_kind=kind["kind"], amount=amount)
+        wants_desk = (bool(kinds) and limits["desks"] >= limits["max_desks"] and not frozen and may_expand
+                      and rng.random() < expand_prob)
+        _office_moves(ctx, style, plan, rng, rw, in_trouble, thriving, wants_desk)
+
         cooldown_ok = co["days_since_desk_closed"] >= 120
         closable = [d for d in depts if d["bets_90d"] >= 60 and d["roi_90d"] < st["close_roi"] and d["z_90d"] <= -1.5
                     and d["profit_90d"] < -200 and d["age_days"] >= 120]
@@ -309,6 +316,64 @@ def review(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
     return {"thought": _thought(ctx, style, rw, in_trouble, thriving),
             "memo": _memo(ctx, style, plan, rw, in_trouble, thriving, scope),
             "actions": plan.actions}
+
+
+def _office_moves(ctx: dict[str, Any], style: str, plan: _Plan, rng: random.Random, rw: float,
+                  in_trouble: bool, thriving: bool, wants_desk: bool) -> None:
+    """Lease or give up space in the east wing. One move per monthly review at most."""
+    office = ctx.get("office")
+    if not office:
+        return
+    co = ctx["company"]
+    costs = max(co["monthly_costs"], 200.0)
+    fac = {f["key"]: f for f in office["facilities"]}
+    if in_trouble:
+        give_up = {"conservative_operator": 0.8, "data_driven": 0.7, "chaotic_founder": 0.4,
+                   "aggressive_expansionist": 0.25}[style]
+        for f in sorted((f for f in fac.values() if f["leased"]), key=lambda f: -f["monthly_cost"]):
+            if f["key"] == "desk_wing" and ctx["limits"]["desks"] > ctx["limits"]["max_desks"] - 1:
+                continue  # a desk works there
+            if rng.random() < give_up:
+                plan.add("RELEASE_SPACE", f"We cannot carry the {f['name']} (€{f['monthly_cost']:.0f}/month) right now.",
+                         facility=f["key"])
+            break
+        return
+    if co["status"] not in ("stable", "thriving") or rw < 12:
+        return
+
+    def affordable(f: dict[str, Any], months: float) -> bool:
+        return not f["leased"] and co["cash"] >= f["fit_out"] + months * costs
+
+    canteen, studio, wing = fac["canteen"], fac["studio"], fac["desk_wing"]
+    stress, quits = office["avg_staff_stress"], office["voluntary_departures_90d"]
+    record = co["roi_90d"] or 0.0
+    choice: tuple[dict[str, Any], str] | None = None
+    if style == "aggressive_expansionist":
+        if wants_desk and affordable(wing, 1.0):
+            choice = (wing, "We have outgrown this floor. Taking the east wing.")
+        elif affordable(studio, 1.0) and (thriving or rng.random() < 0.3):
+            choice = (studio, "A daily tips show will put us on every screen in Portavia.")
+        elif thriving and affordable(canteen, 1.5) and rng.random() < 0.4:
+            choice = (canteen, "Talent wants perks. Lunch is on us.")
+    elif style == "data_driven":
+        if record > 0.01 and co["bets_90d"] >= 300 and affordable(studio, 1.5):
+            choice = (studio, f"ROI {record:+.1%} over {co['bets_90d']} bets is worth broadcasting.")
+        elif (stress > 0.45 or quits >= 2) and affordable(canteen, 1.5):
+            choice = (canteen, f"Average stress {stress:.0%}, {quits} departures in 90 days: lunch is cheaper than turnover.")
+        elif wants_desk and thriving and affordable(wing, 2.0):
+            choice = (wing, "Every desk slot is taken and the numbers support another.")
+    elif style == "conservative_operator":
+        if thriving and (stress > 0.5 or quits >= 2) and affordable(canteen, 3.0):
+            choice = (canteen, "A calmer office makes fewer mistakes.")
+        elif thriving and record > 0.02 and co["bets_90d"] >= 400 and affordable(studio, 3.0) and rng.random() < 0.5:
+            choice = (studio, "A steady record earns a modest show.")
+    else:  # chaotic founder
+        options = [f for f in (canteen, studio, wing) if affordable(f, 1.0) and (f["key"] != "desk_wing" or wants_desk)]
+        if options and rng.random() < 0.08:
+            choice = (rng.choice(options), rng.choice(("Saw it, loved it, signed it.", "Vibes. Big vibes.",
+                                                       "Every great company needs one of these.")))
+    if choice:
+        plan.add("LEASE_SPACE", choice[1], facility=choice[0]["key"])
 
 
 def _deploy_target(ctx: dict[str, Any], x: dict[str, Any], excluded: set[str],
@@ -457,6 +522,10 @@ def _memo(ctx: dict[str, Any], style: str, plan: _Plan, rw: float, in_trouble: b
         parts.append("A LAB strategy is going live.")
     if plan.count("TAKE_LOAN"):
         parts.append("We have secured additional credit.")
+    if plan.count("LEASE_SPACE"):
+        parts.append("We are taking more space in the east wing.")
+    if plan.count("RELEASE_SPACE"):
+        parts.append("We are giving up some office space.")
     if len(parts) == 1:
         parts.append("No changes this month. Keep doing the work.")
     return " ".join(parts)

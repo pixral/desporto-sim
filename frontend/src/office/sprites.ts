@@ -3,7 +3,7 @@
 import type { Appearance } from "../api/types";
 import { iso, TH, TW } from "./iso";
 import type { Furniture } from "./layout";
-import { fillPoly, isoBox, makeCanvas, outline, shade, tileDiamond, type Ctx } from "./pixel";
+import { fillPoly, isoBox, makeCanvas, outline, shade, type Ctx } from "./pixel";
 
 export const SPRITE_W = 16;
 export const SPRITE_H = 24;
@@ -211,7 +211,8 @@ function drawHair(px: Px, L: Look, view: "front" | "back"): void {
 
 // ---------------------------------------------------------------------------- status icons
 export type IconKind =
-  | "question" | "chart" | "ball" | "alert" | "cloud" | "star" | "bulb" | "dots" | "coffee" | "zzz" | "box" | "euro";
+  | "question" | "chart" | "ball" | "alert" | "cloud" | "star" | "bulb" | "dots" | "coffee" | "zzz" | "box" | "euro"
+  | "mic";
 
 const iconCache = new Map<string, HTMLCanvasElement>();
 
@@ -265,6 +266,10 @@ export function icon(kind: IconKind): HTMLCanvasElement {
     case "zzz":
       px(3, 2, 3, 1, "#4a58a8"); px(4, 3, 1, 1, "#4a58a8"); px(3, 4, 3, 1, "#4a58a8"); px(7, 5, 3, 1, "#4a58a8"); px(8, 6, 1, 1, "#4a58a8"); px(7, 7, 3, 1, "#4a58a8");
       break;
+    case "mic":
+      px(5, 1, 3, 4, "#4a4458"); px(5, 2, 3, 1, "#8a8a99"); px(4, 4, 1, 2, ink); px(8, 4, 1, 2, ink); px(5, 6, 3, 1, ink); px(6, 7, 1, 1, ink);
+      px(10, 2, 1, 1, "#d6323a");
+      break;
     case "box":
       px(2, 4, 9, 7, "#b58a5a"); px(2, 4, 9, 2, "#c99d6b"); px(6, 4, 1, 7, "#8d6a42");
       break;
@@ -283,7 +288,8 @@ export interface Prerendered {
 const FURNITURE_HEIGHT: Record<string, number> = {
   bookshelf: 40, server: 40, arcade: 32, coffee: 26, cooler: 24, trophies: 26, cabinet: 20, plant: 22,
   noticeboard: 26, sofa: 18, desk: 20, lab_desk: 20, ceo_desk: 22, meeting_table: 16, foosball: 14, chair: 14,
-  beanbag: 10, box: 10, rug: 2, mat: 2, vacant_sign: 2,
+  beanbag: 10, box: 10, rug: 2, counter: 16, fridge: 34, cafe_table: 10, backdrop: 34, studio_desk: 14,
+  camera: 22, lamp_stand: 30, sawhorse: 10,
 };
 
 export function prerenderFurniture(f: Furniture): Prerendered {
@@ -332,10 +338,22 @@ function drawFurniture(ctx: Ctx, f: Furniture): void {
       for (let i = 0; i < 3; i++)
         isoBox(ctx, x + 0.6 + i * 1.2, y + 0.7, 0.35, 0.25, 1, { top: "#3c3a4a", left: "#2b2733", right: "#211e29" }, 9);
       break;
-    case "chair":
-      isoBox(ctx, x + 0.22, y + 0.22, 0.56, 0.56, 5, { top: "#4a4258", left: "#3a3346", right: "#2d2738" });
-      isoBox(ctx, x + 0.22, y + 0.18, 0.56, 0.12, 9, { top: "#4a4258", left: "#3a3346", right: "#2d2738" }, 5);
+    case "chair": {
+      // office chair: dark post, cushioned seat, backrest on the side away from where the sitter looks
+      const c = { top: "#554b66", left: "#3f374d", right: "#2f293a" };
+      const face = f.face ?? "S";
+      if (f.part !== "back") {
+        isoBox(ctx, x + 0.45, y + 0.45, 0.1, 0.1, 3, { top: "#2b2733", left: "#24202c", right: "#1b1822" });
+        isoBox(ctx, x + 0.22, y + 0.22, 0.56, 0.56, 2, c, 3);
+      }
+      if (f.part !== "seat") {
+        if (face === "S") isoBox(ctx, x + 0.22, y + 0.17, 0.56, 0.1, 8, c, 5);
+        else if (face === "N") isoBox(ctx, x + 0.22, y + 0.73, 0.56, 0.1, 8, c, 5);
+        else if (face === "E") isoBox(ctx, x + 0.17, y + 0.22, 0.1, 0.56, 8, c, 5);
+        else isoBox(ctx, x + 0.73, y + 0.22, 0.1, 0.56, 8, c, 5);
+      }
       break;
+    }
     case "plant": {
       isoBox(ctx, x + 0.3, y + 0.3, 0.4, 0.4, 6, { top: "#5b3a24", left: "#b5603a", right: "#94492b" });
       const c = iso(x + 0.5, y + 0.5);
@@ -416,17 +434,61 @@ function drawFurniture(ctx: Ctx, f: Furniture): void {
     case "noticeboard":
       isoBox(ctx, x + 0.1, y + 0.4, 0.8, 0.12, 20, { top: "#a87b4f", left: "#c4935f", right: "#8d643d" }, 2);
       break;
-    case "rug":
-      for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + w; xx++) tileDiamond(ctx, xx, yy, "#8c2f39", 0.04);
-      for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + w; xx++) tileDiamond(ctx, xx, yy, "#a33a45", 0.2);
+    case "counter": {
+      // serving counter with trays of food
+      isoBox(ctx, x + 0.05, y + 0.15, w - 0.1, d - 0.3, 12, { top: "#d9d4ca", left: "#9a9fa8", right: "#7f848d" });
+      const dishes = ["#e0a21b", "#3aa35b", "#c23b3b", "#e8e0d0", "#d4573a"];
+      for (let i = 0; i < w; i++) {
+        isoBox(ctx, x + i + 0.2, y + 0.3, 0.6, 0.35, 1, { top: dishes[i % dishes.length], left: "#6a6f78", right: "#5a5f68" }, 12);
+      }
       break;
-    case "mat":
-      tileDiamond(ctx, x, y, "#7a2f2f", 0.08);
-      tileDiamond(ctx, x, y, "#a54444", 0.22);
+    }
+    case "fridge":
+      isoBox(ctx, x + 0.12, y + 0.12, 0.76, 0.7, 32, { top: "#f2f4f6", left: "#d5dade", right: "#b9bfc5" });
+      isoBox(ctx, x + 0.14, y + 0.8, 0.72, 0.02, 1, { top: "#8a9098", left: "#8a9098", right: "#8a9098" }, 18);
       break;
-    case "vacant_sign":
-      tileDiamond(ctx, x, y, "#2c2533", 0.15);
+    case "cafe_table":
+      isoBox(ctx, x + 0.45, y + 0.4, 0.1, 0.2, 7, { top: "#3a3646", left: "#2b2733", right: "#211e29" });
+      isoBox(ctx, x + 0.1, y + 0.12, w - 0.2, d - 0.24, 2, { top: "#e9e2d2", left: "#c9bfa9", right: "#b2a790" }, 7);
+      isoBox(ctx, x + 0.4, y + 0.35, 0.3, 0.3, 1, { top: "#f2a541", left: "#c98a1a", right: "#a8731a" }, 9);
+      isoBox(ctx, x + w - 0.7, y + 0.35, 0.3, 0.3, 1, { top: "#e8e0d0", left: "#c9c0ae", right: "#b2a790" }, 9);
       break;
+    case "backdrop": {
+      // the studio's set wall: dark panel with a glowing logo stripe
+      isoBox(ctx, x, y + 0.1, w, 0.15, 32, { top: "#3b3550", left: "#2a2540", right: "#201c31" });
+      const a = iso(x + 0.6, y + 0.25);
+      const b = iso(x + w - 0.6, y + 0.25);
+      fillPoly(ctx, [{ x: a.x, y: a.y - 24 }, { x: b.x, y: b.y - 24 }, { x: b.x, y: b.y - 20 }, { x: a.x, y: a.y - 20 }], "#ff8ad8");
+      fillPoly(ctx, [{ x: a.x, y: a.y - 15 }, { x: b.x, y: b.y - 15 }, { x: b.x, y: b.y - 13 }, { x: a.x, y: a.y - 13 }], "#6cc4ff");
+      break;
+    }
+    case "studio_desk":
+      isoBox(ctx, x + 0.05, y + 0.1, w - 0.1, d - 0.2, 11, { top: "#e9e2f2", left: "#7b5ba8", right: "#5d4385" });
+      isoBox(ctx, x + 0.3, y + 0.75, w - 0.6, 0.05, 4, { top: "#ff8ad8", left: "#ff8ad8", right: "#d966b3" }, 3);
+      break;
+    case "camera":
+      isoBox(ctx, x + 0.45, y + 0.45, 0.1, 0.1, 13, { top: "#2b2733", left: "#2b2733", right: "#1b1822" });
+      isoBox(ctx, x + 0.25, y + 0.3, 0.5, 0.35, 7, { top: "#4a4458", left: "#353042", right: "#272333" }, 13);
+      isoBox(ctx, x + 0.32, y + 0.12, 0.2, 0.2, 4, { top: "#1b1822", left: "#1b1822", right: "#14121a" }, 15);
+      break;
+    case "lamp_stand":
+      isoBox(ctx, x + 0.46, y + 0.46, 0.08, 0.08, 24, { top: "#2b2733", left: "#2b2733", right: "#1b1822" });
+      isoBox(ctx, x + 0.25, y + 0.25, 0.5, 0.5, 6, { top: "#fff3c4", left: "#3a3646", right: "#2b2733" }, 22);
+      break;
+    case "sawhorse":
+      isoBox(ctx, x + 0.1, y + 0.4, w - 0.2, 0.2, 2, { top: "#f2a541", left: "#c98a1a", right: "#a8731a" }, 7);
+      for (const u of [0.2, w - 0.3]) isoBox(ctx, x + u, y + 0.45, 0.1, 0.1, 7, { top: "#8a6a42", left: "#6e5232", right: "#5a4226" });
+      break;
+    case "rug": {
+      // one continuous rug: fringe, border, field and an inner line
+      const quad = (u0: number, v0: number, u1: number, v1: number) => [iso(u0, v0), iso(u1, v0), iso(u1, v1), iso(u0, v1)];
+      fillPoly(ctx, quad(x + 0.08, y + 0.08, x + w - 0.08, y + d - 0.08), "#e8d9b8");
+      fillPoly(ctx, quad(x + 0.14, y + 0.14, x + w - 0.14, y + d - 0.14), "#6e2430");
+      fillPoly(ctx, quad(x + 0.32, y + 0.32, x + w - 0.32, y + d - 0.32), "#a33a45");
+      fillPoly(ctx, quad(x + 0.5, y + 0.5, x + w - 0.5, y + d - 0.5), "#c2a25a");
+      fillPoly(ctx, quad(x + 0.56, y + 0.56, x + w - 0.56, y + d - 0.56), "#a33a45");
+      break;
+    }
   }
 }
 

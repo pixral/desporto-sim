@@ -43,7 +43,9 @@ class CostTotals(Model):
     lab: float = 0.0
     ai: float = 0.0
     interest: float = 0.0
+    other_costs: float = 0.0  # one-offs: office fit-outs, lease breaks, disasters
     subscriptions: float = 0.0  # revenue
+    other_income: float = 0.0  # one-offs: sponsorship bonuses, rebates
 
     @property
     def expenses(self) -> float:
@@ -57,11 +59,12 @@ class CostTotals(Model):
             + self.lab
             + self.ai
             + self.interest
+            + self.other_costs
         )
 
     @property
     def net(self) -> float:
-        return self.betting_pnl + self.subscriptions - self.expenses
+        return self.betting_pnl + self.subscriptions + self.other_income - self.expenses
 
     def add(self, other: "CostTotals") -> None:
         for name in CostTotals.model_fields:
@@ -84,6 +87,7 @@ class Finances(Model):
     peak_value_day: date | None = None
     max_drawdown: float = 0.0  # fraction from peak valuation
     record_cash: float = 0.0
+    invested: float = 0.0  # outside money put into the company (sandbox investors)
 
 
 class MonthlyReport(Model):

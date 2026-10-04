@@ -1,6 +1,6 @@
 import { api } from "../api/client";
 import { useStore } from "../state/store";
-import { shortDate } from "../util/format";
+import { eur, shortDate } from "../util/format";
 import { useLive } from "../util/hooks";
 
 export function Ceo() {
@@ -16,6 +16,31 @@ export function Ceo() {
           desks, LAB). Every proposed action is validated; rejected actions are shown with the reason.
         </div>
       </div>
+      {state && (
+        <div className="panel">
+          <div className="panel-title">
+            <h3>Office space</h3>
+            <span className="muted">{state.office.desk_rooms} desk rooms</span>
+          </div>
+          <div className="dim" style={{ marginBottom: 10 }}>
+            The east wing next door is for lease. The CEO decides at monthly reviews: each space costs a one-off fit-out
+            plus a monthly bill, and changes how the company works.
+          </div>
+          <div className="facilities">
+            {state.office.facilities.map((f) => (
+              <div key={f.key} className={`facility ${f.leased ? "leased" : ""}`}>
+                <div className="facility-name">{f.name}</div>
+                <div>{f.effect}</div>
+                <div className="muted">
+                  {f.leased
+                    ? `Leased since ${shortDate(f.since!)} · ${eur(f.monthly_cost)}/month`
+                    : `Fit-out ${eur(f.fit_out)} · ${eur(f.monthly_cost)}/month`}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {(data ?? []).map((m, i) => (
         <div className="panel" key={i}>
           <div className="panel-title">

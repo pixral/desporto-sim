@@ -56,8 +56,8 @@ def after_month_close(world: World, net: float, month_label: str, valuation: flo
 
 def after_day(world: World, valuation: float, status_before: str, status_after: str, day_pnl: float) -> None:
     m = world.milestones
-    start = world.config.starting_capital
-    # valuation thresholds
+    start = float(m.get("founding_value", world.config.starting_capital))
+    # valuation thresholds (relative to the value on the first day)
     for mult, label in ((1.25, "+25%"), (1.5, "+50%"), (2.0, "doubled"), (3.0, "tripled")):
         if valuation >= start * mult and _flag(world, f"value_{mult}"):
             record(world, "record", f"Company value {label}: €{valuation:,.0f}",
@@ -65,7 +65,7 @@ def after_day(world: World, valuation: float, status_before: str, status_after: 
     for frac, label in ((0.75, "-25%"), (0.5, "-50%"), (0.25, "-75%")):
         if valuation <= start * frac and _flag(world, f"value_down_{frac}"):
             record(world, "record", f"Company value {label}: €{valuation:,.0f}",
-                   "Drawdown from the founding capital.", 3, "bad")
+                   "Down from the value at founding.", 3, "bad")
     if status_before != status_after:
         if status_after == "distress":
             first = _flag(world, "first_distress")

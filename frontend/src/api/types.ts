@@ -167,6 +167,7 @@ export interface RunSummary {
   ai_calls: number;
   ceo_changes: number;
   seasons: number;
+  god_actions?: number;
 }
 
 export interface StateView {
@@ -204,6 +205,99 @@ export interface StateView {
   today: { matches: number; live: number; finished: number };
   summary: RunSummary | null;
   latest_recap: { id: string; season: string } | null;
+  office: OfficeView;
+  city: CityBrief;
+  sandbox: { god_actions: number };
+}
+
+export interface Facility {
+  key: "canteen" | "desk_wing" | "studio";
+  name: string;
+  effect: string;
+  leased: boolean;
+  since: string | null;
+  fit_out: number;
+  monthly_cost: number;
+}
+
+export interface OfficeView {
+  leased: Record<string, string>;
+  desk_rooms: number;
+  facilities: Facility[];
+}
+
+export interface CityModifier {
+  kind: string;
+  value: number;
+  until: string;
+  label: string;
+  days_left: number;
+}
+
+export interface CityBrief {
+  paper: string;
+  name: string;
+  edition: string | null;
+  headline: string | null;
+  index: number | null;
+  index_change: number | null;
+  betting_sentiment: number;
+  modifiers: CityModifier[];
+}
+
+export interface PressItem {
+  id: string;
+  day: string;
+  section: "front" | "business" | "city" | "sports" | "company";
+  headline: string;
+  body: string;
+  tickers: string[];
+  move: number | null;
+  importance: number;
+  tone: "good" | "bad" | "neutral";
+  effect: string;
+  lead: boolean;
+  kind: string;
+}
+
+export interface StockRow {
+  ticker: string;
+  name: string;
+  sector: string;
+  price: number;
+  change: number;
+  spark: number[];
+}
+
+export interface NewspaperView {
+  available: boolean;
+  paper: string;
+  city: string;
+  day?: string;
+  edition_no?: number;
+  prev?: string | null;
+  next?: string | null;
+  latest?: string;
+  items?: PressItem[];
+  stocks?: StockRow[];
+  index?: { value: number; change: number; spark: number[] } | null;
+  results?: { competition: string; home: string; away: string; score: string }[];
+  base_rate?: number;
+  economy?: number;
+  betting_sentiment?: number;
+  loan_rate_monthly?: number;
+  modifiers?: CityModifier[];
+}
+
+export interface GodCatalog {
+  actions: string[];
+  disasters: { key: string; title: string; share: number }[];
+  severities: string[];
+  windfalls: { key: string; label: string }[];
+  sectors: string[];
+  facilities: { key: string; name: string }[];
+  ceo_styles: string[];
+  difficulties: string[];
 }
 
 export interface SeasonRecap {
@@ -328,7 +422,9 @@ export interface CostLines {
   lab: number;
   ai: number;
   interest: number;
+  other_costs: number;
   subscriptions: number;
+  other_income: number;
   expenses: number;
   net: number;
 }

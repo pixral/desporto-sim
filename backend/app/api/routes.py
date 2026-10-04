@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.agents.catalog import CEO_STYLE_INFO
 from app.domain.world import CEO_STYLES, RunConfig
 from app.economy.config import DIFFICULTY
-from app.simulation import views
+from app.simulation import city, god, views
 from app.simulation.runner import SPEEDS, SimulationRunner
 
 router = APIRouter(prefix="/api")
@@ -47,6 +47,11 @@ class ControlRequest(BaseModel):
 
 class SaveRequest(BaseModel):
     label: str = Field("Manual save", max_length=120)
+
+
+class GodRequest(BaseModel):
+    action: str = Field(max_length=40)
+    params: dict[str, Any] = Field(default_factory=dict)
 
 
 @router.get("/meta")
@@ -148,6 +153,32 @@ def management(request: Request) -> list[dict[str, Any]]:
 @router.get("/recaps")
 def recaps(request: Request) -> list[dict[str, Any]]:
     return views.recaps_view(world_or_404(runner_of(request)))
+
+
+@router.get("/newspaper")
+def newspaper(request: Request, day: date | None = None) -> dict[str, Any]:
+    return city.edition_view(world_or_404(runner_of(request)), day)
+
+
+@router.get("/office")
+def office(request: Request) -> dict[str, Any]:
+    return views.office_view(world_or_404(runner_of(request)))
+
+
+@router.get("/god")
+def god_catalog() -> dict[str, Any]:
+    return god.catalog()
+
+
+@router.post("/god")
+async def god_action(body: GodRequest, request: Request) -> dict[str, Any]:
+    runner = runner_of(request)
+    world_or_404(runner)
+    try:
+        message = await runner.god(body.action, body.params)
+    except (god.GodError, ValueError, TypeError) as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"ok": True, "message": message, "god_actions": runner.world.stats.god_actions if runner.world else 0}
 
 
 @router.get("/summary")

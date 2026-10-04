@@ -54,6 +54,34 @@ def _ceo_style(world: World) -> str:
     return world.ceo().ceo_style or world.config.ceo_style
 
 
+# ---------------------------------------------------------------------------------- meetings
+def gather_meeting(world: World, scope: str, touched: set[str] | None = None) -> list[Employee]:
+    """Who sits with the CEO this morning: anyone the review affected, plus each desk's lead
+    (the head of desk, else its most senior member). The LAB joins the monthly review."""
+    touched = touched or set()
+    called = [world.employees[i] for i in sorted(touched) if i in world.employees]
+    called = [e for e in called if e.active and e.role != "ceo" and e.status != "arriving"]
+    leads: list[Employee] = []
+    for d in sorted(world.active_departments(), key=lambda d: d.room_slot):
+        if d.kind == "lab" and scope == "weekly":
+            continue
+        members = [e for e in world.department_members(d.id) if e.role in ("tipster", "researcher")
+                   and e.status != "arriving"]
+        if not members:
+            continue
+        head = next((e for e in members if e.id == d.head_id), None)
+        leads.append(head or max(members, key=lambda e: (e.level, e.psyche.reputation, e.id)))
+    seen = {e.id for e in called}
+    task = {"weekly": "Monday stand-up", "monthly": "Monthly review meeting"}.get(scope, "Meeting the new CEO")
+    out: list[Employee] = []
+    for e in called + [x for x in leads if x.id not in seen]:
+        if len(out) >= 8:  # seats around the table
+            break
+        e.status, e.task = "meeting", ("Called in by the CEO" if e.id in seen else task)
+        out.append(e)
+    return out
+
+
 # ---------------------------------------------------------------------------------- daily
 def daily(world: World, rng: random.Random) -> None:
     """Called after settlement: arguments, celebrations, poaching offers, simmering resentment."""
@@ -223,22 +251,30 @@ def _board_review(world: World, rng: random.Random) -> None:
         return
     old_style = ceo.ceo_style or world.config.ceo_style
     new_style = rng.choice([s for s in CEO_STYLES if s != old_style])
-    management.depart(world, ceo, "fired by the board", fired=True)
-    new = hiring.make_ceo(world, rng, new_style)
-    management.add_employee(world, rng, new)
-    new.status, new.task = "meeting", "Meeting the team"
-    world.config.ceo_style = new_style
-    world.milestones["board_fired"] = _ord(world.today)
-    world.stats.ceo_changes += 1
-    label = CEO_STYLE_INFO[new_style]["label"]
     history.record(world, "board_fires_ceo", f"The board fires CEO {ceo.name}",
                    f"Company value €{value:,.0f} ({value / capital - 1:+.0%} since founding). Investors lost patience.",
                    3, "bad", [ceo.id])
+    replace_ceo(world, rng, new_style, "fired by the board")
+    world.milestones["board_fired"] = _ord(world.today)
+
+
+def replace_ceo(world: World, rng: random.Random, new_style: str, reason: str) -> Employee:
+    """Out with the old CEO, in with a new one of the given style (who calls the team together)."""
+    ceo = world.ceo()
+    management.depart(world, ceo, reason, fired=True)
+    new = hiring.make_ceo(world, rng, new_style)
+    management.add_employee(world, rng, new)
+    new.status, new.task = "meeting", "Meeting the team"
+    gather_meeting(world, "new_ceo")
+    world.config.ceo_style = new_style
+    world.stats.ceo_changes += 1
+    label = CEO_STYLE_INFO[new_style]["label"]
     history.record(world, "new_ceo", f"{new.name} takes over as CEO ({label})", CEO_STYLE_INFO[new_style]["description"],
                    3, "drama", [new.id])
-    memo = (f"Team — I'm {new.name}. The board asked me to turn this around. I run things as a "
+    memo = (f"Team — I'm {new.name}. I've been asked to turn this around. I run things as a "
             f"{label.lower()}: {CEO_STYLE_INFO[new_style]['description'].lower()} Expect changes.")
     world.memos.append(Memo(time=world.clock.now, author_id=new.id, scope="monthly", text=memo))
+    return new
 
 
 # ---------------------------------------------------------------------------------- season awards

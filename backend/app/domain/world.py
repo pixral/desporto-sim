@@ -7,6 +7,7 @@ from pydantic import Field
 
 from .base import Model
 from .betting import Bet
+from .city import CityState, OfficeState
 from .company import DailyPoint, Department, Finances, MonthlyReport
 from .events import HistoryEvent, ManagementLog, Memo
 from .lab import AuditFinding, Experiment
@@ -62,6 +63,8 @@ class RunStats(Model):
     raises_granted: int = 0
     raises_refused: int = 0
     ceo_changes: int = 0
+    facilities_leased: int = 0
+    god_actions: int = 0  # sandbox interventions by the player
 
 
 class AIStats(Model):
@@ -130,6 +133,7 @@ class RunSummary(Model):
     ai_calls: int
     ceo_changes: int = 0
     seasons: int = 0
+    god_actions: int = 0
 
 
 class World(Model):
@@ -158,6 +162,8 @@ class World(Model):
     memos: list[Memo] = Field(default_factory=list)
     management_log: list[ManagementLog] = Field(default_factory=list)
     recaps: list[SeasonRecap] = Field(default_factory=list)
+    city: CityState = Field(default_factory=CityState)
+    office: OfficeState = Field(default_factory=OfficeState)
     counters: dict[str, int] = Field(default_factory=dict)
     milestones: dict[str, Any] = Field(default_factory=dict)
     stats: RunStats = Field(default_factory=RunStats)
