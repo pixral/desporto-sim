@@ -10,8 +10,10 @@ export function TopBar() {
   const notify = useStore((s) => s.notify);
   const setShowNewRun = useStore((s) => s.setShowNewRun);
   const setGodOpen = useStore((s) => s.setGodOpen);
+  const setBriefingHidden = useStore((s) => s.setBriefingHidden);
   if (!state) return <div className="topbar" />;
-  const { run, clock, runner, kpis } = state;
+  const { run, clock, runner, kpis, player } = state;
+  const waiting = !!player?.review_open;
 
   const control = async (action: string, speed?: string) => {
     try {
@@ -36,7 +38,10 @@ export function TopBar() {
         <div>
           <h1>{run.company_name.toUpperCase()}</h1>
           <div className="sub">
-            CEO style: {run.ceo_style_label} · paper betting only
+            {player
+              ? `CEO: ${player.name} (you) · advisor: ${player.advisor_label} · season ${player.season}/${player.seasons_total}${player.ironman ? " · ironman" : ""}`
+              : `CEO style: ${run.ceo_style_label}`}{" "}
+            · paper betting only
           </div>
         </div>
       </div>
@@ -50,7 +55,11 @@ export function TopBar() {
         </span>
       </div>
       <div className="controls">
-        {runner.running ? (
+        {waiting ? (
+          <button className="primary pulse" onClick={() => setBriefingHidden(null)} title="The clock waits for your sign-off (space)">
+            {player?.review_scope === "monthly" ? "Monthly review" : "Briefing"} ▸
+          </button>
+        ) : runner.running ? (
           <button className="primary" onClick={() => control("pause")} title="Pause (space)">
             ❚❚ Pause
           </button>
@@ -59,10 +68,10 @@ export function TopBar() {
             ▶ Run
           </button>
         )}
-        <button onClick={() => control("step")} disabled={run.ended} title="Advance one phase">
+        <button onClick={() => control("step")} disabled={run.ended || waiting} title="Advance one phase">
           Step
         </button>
-        <button onClick={() => control("day")} disabled={run.ended} title="Advance one day">
+        <button onClick={() => control("day")} disabled={run.ended || waiting} title="Advance one day">
           +1 Day
         </button>
         <div className="speed-group" role="group" aria-label="Simulation speed">
@@ -75,7 +84,12 @@ export function TopBar() {
       </div>
       <div className="spacer" />
       <span className={`status-badge st-${kpis.status}`}>{STATUS_LABEL[kpis.status]}</span>
-      <button className="sandbox" onClick={() => setGodOpen(true)} title="Sandbox tools: disasters, investors, market shocks…">
+      <button
+        className="sandbox"
+        onClick={() => setGodOpen(true)}
+        disabled={state.sandbox.locked}
+        title={state.sandbox.locked ? "Ironman company: the sandbox is locked" : "Sandbox tools: disasters, investors, market shocks…"}
+      >
         Sandbox{state.sandbox.god_actions ? ` · ${state.sandbox.god_actions}` : ""}
       </button>
       <button onClick={save} disabled={run.ended}>

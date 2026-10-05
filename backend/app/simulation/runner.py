@@ -11,11 +11,14 @@ from typing import Any
 
 from app.ai.gateway import AICallRecord
 from app.ai.provider import IAgentModelProvider
+from app.ai.schemas import CEOAction
+from app.domain.events import ActionRecord
+from app.domain.player import Proposal
 from app.domain.world import RunConfig, World
 from app.persistence.repository import Repository
 from app.sports.provider import ISportsDataProvider
 
-from . import god, views
+from . import god, player, views
 from .engine import SimulationEngine
 from .factory import create_world
 
@@ -44,6 +47,7 @@ class SimulationRunner:
         self._task: asyncio.Task | None = None
         self._last_month = ""
         self._last_autosave = 0.0
+        self._resume_after_review = False  # the clock was running when a briefing stopped it
         self.providers: dict[str, str] = {}
 
     # ------------------------------------------------------------------ lifecycle
@@ -87,6 +91,10 @@ class SimulationRunner:
             self.running = False
             await self.flush_ai()
             world = await asyncio.to_thread(self.repo.load_world, save_id)
+            if world.config.ironman and not world.ended:
+                latest = await asyncio.to_thread(self.repo.latest_save_id, world.run_id)
+                if latest is not None and save_id != latest:
+                    raise PermissionError("Ironman company: only its latest save can be loaded")
             sports = self.make_sports(world.config)
             sports.import_state(world.provider_state)
             self._attach(world, sports, world.config)
@@ -112,9 +120,13 @@ class SimulationRunner:
             self.speed = speed
         if action == "pause":
             self.running = False
+            self._resume_after_review = False
         elif action == "resume":
             if self.engine and not self.engine.world.ended:
-                self.running = True
+                if player.awaiting(self.engine.world):
+                    self._resume_after_review = True  # runs on as soon as the briefing is signed
+                else:
+                    self.running = True
         elif action == "step":
             self.running = False
             await self._do_step()
@@ -123,6 +135,8 @@ class SimulationRunner:
             if self.engine:
                 target = self.engine.world.clock.day_index + 1
                 while self.engine.world.clock.day_index < target and not self.engine.world.ended:
+                    if player.awaiting(self.engine.world):
+                        break
                     await self._do_step(publish=False)
         self._wake.set()
         await self.publish(force=True)
@@ -131,14 +145,54 @@ class SimulationRunner:
         """Apply a sandbox intervention between two simulation steps."""
         if self.engine is None:
             raise god.GodError("no company loaded")
+        if self.engine.world.config.ironman:
+            raise god.GodError("Ironman company: the sandbox is locked")
         async with self.lock:
             message = god.apply(self.engine.world, self.engine.rng, action, params)
         await self.publish(force=True)
         return message
 
+    # ------------------------------------------------------------------ player mode
+    def _player_engine(self) -> SimulationEngine:
+        if self.engine is None or not player.active(self.engine.world):
+            raise ValueError("you are not running this company")
+        return self.engine
+
+    async def resolve_review(self, actions: list[CEOAction], memo: str) -> list[ActionRecord]:
+        """Sign off the open briefing; the clock carries on if it was running when the briefing opened."""
+        engine = self._player_engine()
+        async with self.lock:
+            records = await engine.resolve_review(actions, memo)
+            if self._resume_after_review and not engine.world.ended:
+                self.running = True
+            self._resume_after_review = False
+        self._wake.set()
+        await self.publish(force=True)
+        return records
+
+    async def office_action(self, action: CEOAction) -> ActionRecord:
+        engine = self._player_engine()
+        async with self.lock:
+            rec = engine.office_action(action)
+        await self.publish(force=True)
+        return rec
+
+    async def queue(self, action: CEOAction) -> Proposal:
+        engine = self._player_engine()
+        async with self.lock:
+            p = player.queue(engine.world, action)
+        await self.publish(force=True)
+        return p
+
+    async def unqueue(self, index: int) -> None:
+        engine = self._player_engine()
+        async with self.lock:
+            player.unqueue(engine.world, index)
+        await self.publish(force=True)
+
     def runner_state(self) -> dict[str, Any]:
         return {"running": self.running, "speed": self.speed, "speeds": list(SPEEDS),
-                "phase_seconds": SPEEDS.get(self.speed, 1.5)}
+                "phase_seconds": SPEEDS.get(self.speed, 1.5), "resume_after_review": self._resume_after_review}
 
     # ------------------------------------------------------------------ loop
     async def _do_step(self, publish: bool = True) -> None:
@@ -146,12 +200,16 @@ class SimulationRunner:
             return
         async with self.lock:
             try:
-                await self.engine.step()
+                result = await self.engine.step()
             except Exception:
                 log.exception("simulation step failed; pausing")
                 self.running = False
                 raise
             world = self.engine.world
+            if result == "awaiting_ceo" or player.awaiting(world):
+                # a briefing is waiting for the player: stop the clock, carry on after the sign-off
+                self._resume_after_review = self._resume_after_review or self.running
+                self.running = False
             month = world.today.strftime("%Y-%m")
             if world.ended:
                 self.running = False
@@ -166,8 +224,10 @@ class SimulationRunner:
                 self._last_month = month
             if len(self._pending_ai) >= 50:
                 await self.flush_ai()
+            stopped = world.ended or player.awaiting(world)
         if publish:
-            await self.publish()
+            # the clock stopping (a briefing, the end) must reach the UI even at full speed
+            await self.publish(force=stopped)
 
     async def _loop(self) -> None:
         while True:

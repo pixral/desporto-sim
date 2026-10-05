@@ -91,6 +91,43 @@ replacing the CEO, free office space, changing difficulty. Every intervention go
 (investor money is equity, not profit; disasters and windfalls are one-off costs/income), is written into the
 history, and is counted on the end screen ("sandbox run").
 
+## Playing as CEO (player mode)
+
+Choose **You** under "Who runs it?" when founding a company. Tipsters, the LAB, rivals, the board and the city
+stay autonomous; the AI CEO policy (or Claude) becomes your **advisor**.
+
+- **Briefings.** On the 1st (monthly review), and on Mondays if you chose "Every review", the clock stops at 08:00
+  until you sign off. The briefing is the same report the advisor read, plus its suggestions with reasons
+  (accept, edit the number, or skip), flagged people, desks, money, the LAB and office space. Your decisions go
+  through the same validation as the AI CEO's (same limits, same refusal reasons). The rest of the morning (LAB
+  work, the studio show) happens after your sign-off, and an open briefing is part of the save.
+- **Pause modes.** *Monthly reviews* (recommended): the advisor runs the Monday stand-ups. *Every review*: the
+  clock also stops every Monday. *Hands off*: the advisor runs every review. When the advisor acts for you it
+  never fires anyone, closes a desk or cuts pay; those suggestions are logged as "left for you".
+- **Office hours** (between reviews: click a person or a desk). Talk (their stress −5 points, their trust in you
+  +3; three a week, once per person, talks in a briefing count too), warn, lift a review, time off, move to
+  another desk, a desk's stake limit, fund or withdraw a desk's bankroll, fire (one a week, with severance), ask
+  the LAB to test an applicant. Everything else (hiring, promotions, budgets, leases, opening or closing desks,
+  loans, pay cuts, team nights, the LAB brief, roll-outs) waits for the monthly review. Queue it and it arrives
+  pre-ticked in the next monthly briefing; if the advisor runs that review, it applies your queued orders first.
+  A queued hire keeps the applicant in the pool until the 1st.
+- **The LAB.** The research brief (a league, a market, underdogs, or ideas for one desk) is set at monthly
+  reviews; researchers follow it unless stubbornness wins (mock: a 0.6 × stubbornness chance of ignoring it;
+  Claude researchers explain how they read it). You choose which applicants the LAB backtests: a test takes one
+  LAB slot until next Monday and needs a LAB budget of at least €40. Slots: 1, 2 or 3 per researcher at budgets
+  under €90, from €90, from €160, shared with experiments. A tested applicant stays in the pool until the next
+  monthly review. Finished experiments can be rolled out to a tipster (the 60-day rule and refusals still apply)
+  or shelved.
+- **The board.** From day 180 the board watches company value: under 45% of the starting capital, or a 60%
+  drawdown while strained or in distress, earns a warning. Still collapsed at a monthly review at least 28 days
+  later, you're fired and the run ends. On Easy the board only warns. Recovering to 60% of the starting capital
+  clears the warning.
+- **Seasons and endings.** A season ends on 1 June (one that started less than six months earlier doesn't
+  count). After the fifth season's awards you retire. Endings: retired, fired by the board, bankrupt.
+- **Ironman.** No sandbox, and only the latest save of the company can be loaded.
+- **Watch mode is unchanged.** `python -m app.tools.golden` (and `tests/test_golden.py`) checks that 12 AI-CEO
+  companies (4 styles × 3 seeds × 120 days) come out identical to the recorded fingerprints.
+
 ## Settlement & stats
 
 Win pays stake × odds into the desk bankroll; loss pays nothing; void returns the stake. A bet on a desk that

@@ -53,6 +53,8 @@ def create_world(config: RunConfig, sports: ISportsDataProvider) -> World:
     world.milestones["months_since_salary_cut"] = 99
 
     ceo = hiring.make_ceo(world, rng, config.ceo_style)
+    if config.player_ceo and config.player_name.strip():
+        ceo.name = config.player_name.strip()[:40]  # the player; the same seed still founds the same company
     world.employees[ceo.id] = ceo
 
     bankroll_each = config.starting_capital * EC.BANKROLL_SHARE / len(INITIAL_DESKS)

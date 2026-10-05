@@ -9,6 +9,7 @@ export function Sidebar() {
   const [notableOnly, setNotableOnly] = useState(false);
   if (!state) return <aside className="sidebar" />;
   const ceo = state.employees.find((e) => e.role === "ceo");
+  const player = state.player;
   const events = [...state.events].reverse().filter((e) => !notableOnly || e.importance >= 2);
   const bets = [...state.ticker].reverse().slice(0, 14);
   return (
@@ -28,11 +29,34 @@ export function Sidebar() {
           <span>{state.city.headline}</span>
         </button>
       )}
-      {state.ceo_thought && (
-        <div className="thought" title="The CEO's private read of the situation">
-          {ceo?.name} thinks: “{state.ceo_thought}”
-        </div>
+      {player && (
+        <button className="player-box" onClick={() => setTab("ceo")} title="Your CEO page: queue, log, season">
+          <span>
+            Season {player.season}/{player.seasons_total} · {player.days_to_season_end} days to 1 June
+          </span>
+          <span className="muted">
+            {player.review_open
+              ? "A briefing is waiting for you"
+              : player.next_review.date
+                ? `Next briefing ${dayMonth(player.next_review.date)} (${player.next_review.scope})`
+                : "Your advisor runs the reviews"}{" "}
+            · talks {player.limits_left.TALK ?? 0} · firings {player.limits_left.FIRE ?? 0}
+            {player.queue.length ? ` · ${player.queue.length} queued` : ""}
+          </span>
+          {player.board.warned && <span className="neg">The board has warned you</span>}
+        </button>
       )}
+      {player
+        ? player.advisor_thought && (
+            <div className="thought" title="Your advisor's read of the situation">
+              Your advisor: “{player.advisor_thought}”
+            </div>
+          )
+        : state.ceo_thought && (
+            <div className="thought" title="The CEO's private read of the situation">
+              {ceo?.name} thinks: “{state.ceo_thought}”
+            </div>
+          )}
       <section>
         <div className="panel-title">
           <h3>Live feed</h3>

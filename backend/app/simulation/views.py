@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from app.agents.catalog import CEO_STYLE_INFO, DEPARTMENT_KINDS, SPECIALTIES
-from app.agents.context import allocation_for
+from app.agents.catalog import CEO_STYLE_INFO, DEPARTMENT_KINDS, MAX_DESK_SIZE, SPECIALTIES
+from app.agents.context import allocation_for, build_ceo_context
 from app.agents.relationships import top_relationships
 from app.domain.betting import Bet
 from app.domain.people import Employee
@@ -16,7 +16,8 @@ from app.economy import config as EC
 from app.economy import market
 from app.economy import valuation as val
 
-from . import metrics
+from . import lab as labsim
+from . import metrics, player
 from .engine import PHASES
 from .summary import build_summary
 
@@ -81,6 +82,7 @@ def state_view(world: World, runner: dict[str, Any] | None = None, providers: di
     return {
         "run": {
             "id": world.run_id, "company_name": world.config.company_name, "ceo_style": world.config.ceo_style,
+            "player_ceo": world.config.player_ceo, "end_kind": world.end_kind,
             "ceo_style_label": CEO_STYLE_INFO[world.config.ceo_style]["label"], "seed": world.config.seed,
             "starting_capital": world.config.starting_capital, "ended": world.ended, "end_reason": world.end_reason,
             "ai_provider": (providers or {}).get("ai", world.config.ai_provider),
@@ -136,7 +138,124 @@ def state_view(world: World, runner: dict[str, Any] | None = None, providers: di
                          if world.recaps else None),
         "office": office_view(world),
         "city": city_brief(world),
-        "sandbox": {"god_actions": world.stats.god_actions},
+        "sandbox": {"god_actions": world.stats.god_actions, "locked": world.config.ironman},
+        "player": player_view(world),
+    }
+
+
+def player_view(world: World) -> dict[str, Any] | None:
+    """Player mode at a glance: the open briefing, weekly limits, the queue, the season."""
+    if not player.active(world):
+        return None
+    p = world.player
+    r = p.review if player.awaiting(world) else None
+    return {
+        "name": world.ceo().name if world.active_employees("ceo") else world.config.player_name,
+        "pause_mode": world.config.pause_mode, "ironman": world.config.ironman,
+        "advisor_style": world.config.ceo_style, "advisor_label": player.advisor_label(world),
+        "advisor_thought": p.advisor_thought,
+        "review_open": r is not None, "review_scope": r.scope if r else None, "review_id": r.id if r else None,
+        "severance_months": EC.SEVERANCE_MONTHS,
+        "limits_left": player.limits_left(world), "weekly_limits": player.WEEKLY_LIMITS,
+        "talked_this_week": player.talked_this_week(world),
+        "queue": [q.model_dump(mode="json") for q in p.queue],
+        "season": min(player.seasons_completed(world) + 1, player.CAREER_SEASONS),
+        "seasons_total": player.CAREER_SEASONS, "season_label": player.season_label(world),
+        "days_to_season_end": player.days_to_season_end(world),
+        "next_review": player.next_review(world),
+        "board": player.board_line(world),
+        "reviews_signed": p.reviews_signed, "reviews_auto": p.reviews_auto,
+        "advice_taken": p.advice_taken, "advice_skipped": p.advice_skipped,
+        "office_actions": sorted(player.OFFICE_ACTIONS),
+    }
+
+
+def lab_slots(world: World) -> dict[str, Any]:
+    return {"slots": labsim.slots(world), "free_slots": max(0, labsim.free_slots(world)),
+            "pending_tests": labsim.pending_tests(world), "brief": world.player.lab_brief,
+            "min_test_budget": labsim.MIN_TEST_BUDGET}
+
+
+def test_status(world: World, cand_id: str) -> dict[str, Any]:
+    c = next((x for x in world.candidates if x.id == cand_id), None)
+    if c is None:
+        return {}
+    return {"testable": c.role == "tipster" and c.strategy_id is not None,
+            "test_due": c.lab_test_due.isoformat() if c.lab_test_due and c.lab_backtest_n is None else None,
+            "expires": c.expires.isoformat()}
+
+
+def candidates_view(world: World) -> dict[str, Any]:
+    """The hiring pool between reviews (player mode): CVs, LAB evidence and where they'd fit."""
+    ctx = build_ceo_context(world, "weekly")
+    members = {d.id: len(world.department_members(d.id)) for d in world.active_departments()}
+    lab_dept = next((d for d in world.active_departments() if d.kind == "lab"), None)
+    return {
+        "candidates": [c | test_status(world, c["id"]) for c in ctx["candidates"]],
+        "desks": [{"id": d["id"], "name": d["name"], "preferred_specialties": d["preferred_specialties"],
+                   "free_seats": MAX_DESK_SIZE - members.get(d["id"], 0)} for d in ctx["departments"]],
+        "lab": {"department_id": lab_dept.id if lab_dept else None,
+                "free_seats": MAX_DESK_SIZE - members.get(lab_dept.id, 0) if lab_dept else 0,
+                "budget": world.finances.lab_budget, **lab_slots(world)},
+        "hiring_frozen": world.finances.hiring_frozen,
+    }
+
+
+def _flags(row: dict[str, Any]) -> list[str]:
+    flags = []
+    if row["under_review"]:
+        flags.append("under review")
+    if row["away"]:
+        flags.append(f"away ({row['away']})")
+    if row["stress"] >= 0.75:
+        flags.append("stressed")
+    if row["lost_nerve"]:
+        flags.append("lost nerve")
+    if row["role"] == "tipster":
+        if row["bets_90d"] >= 40 and row["z_90d"] <= -1.3:
+            flags.append("losing")
+        if row["bets_90d"] >= 90 and row["z_90d"] >= 1.5:
+            flags.append("in form")
+        if row["no_bet_rate"] > 0.9 and row["tenure_days"] > 45:
+            flags.append("not betting")
+    return flags
+
+
+def review_view(world: World) -> dict[str, Any]:
+    """Everything the player needs for the open briefing: the same report the advisor read, plus its advice."""
+    if not player.active(world) or not player.awaiting(world):
+        return {"open": False}
+    r = world.player.review
+    assert r is not None
+    ctx = build_ceo_context(world, r.scope)
+    touched = {str(p.action.get("employee_id")) for p in r.proposals if p.action.get("employee_id")}
+    people = []
+    for row in ctx["employees"]:
+        flags = _flags(row)
+        people.append({**row, "flags": flags, "flagged": bool(flags) or row["id"] in touched,
+                       "note": player.advisor_note(world, row["id"])})
+    members = {d.id: len(world.department_members(d.id)) for d in world.active_departments()}
+    desks = [{**d, "free_seats": MAX_DESK_SIZE - members.get(d["id"], 0)} for d in ctx["departments"]]
+    lab_dept = next((d for d in world.active_departments() if d.kind == "lab"), None)
+    monthly = r.scope == "monthly"
+    return {
+        "open": True, "id": r.id, "scope": r.scope, "date": world.today.isoformat(),
+        "advisor": {"style": world.config.ceo_style, "label": player.advisor_label(world),
+                    "description": CEO_STYLE_INFO[world.config.ceo_style]["description"],
+                    "thought": r.thought, "memo": r.memo},
+        "proposals": [p.model_dump(mode="json") for p in r.proposals],
+        "queue": [q.model_dump(mode="json") for q in world.player.queue] if monthly else [],
+        "company": ctx["company"], "people": people, "desks": desks,
+        "lab": {**ctx["lab"], "free_seats": MAX_DESK_SIZE - members.get(lab_dept.id, 0) if lab_dept else 0,
+                **lab_slots(world)},
+        "candidates": [c | test_status(world, c["id"]) for c in ctx["candidates"]],
+        "available_department_kinds": ctx["available_department_kinds"],
+        "competitions": [{"code": c.code, "name": c.name} for c in world.competitions.values()],
+        "office": ctx["office"], "city": ctx["city"], "limits": ctx["limits"],
+        "review_only": {"lease": monthly, "team_event": monthly, "hire": monthly},
+        "board": player.board_line(world),
+        "season": min(player.seasons_completed(world) + 1, player.CAREER_SEASONS),
+        "seasons_total": player.CAREER_SEASONS, "season_label": player.season_label(world),
     }
 
 
@@ -192,6 +311,9 @@ def employee_detail(world: World, emp_id: str, ai_calls: list[dict[str, Any]] | 
         row["profit"] += b.profit
     return {
         **employee_card(world, e),
+        "advisor_note": player.advisor_note(world, e.id) if player.active(world) else None,
+        "trust_in_ceo": _r(e.relationships[world.ceo().id].trust, 0)
+        if world.active_employees("ceo") and world.ceo().id in e.relationships else None,
         "department": dept.name if dept else None,
         "hired": e.hired.isoformat(), "leave_reason": e.leave_reason, "salary": e.salary,
         "traits": e.traits.as_dict(), "traits_text": e.traits.describe(),

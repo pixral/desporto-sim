@@ -32,6 +32,25 @@ def _capacity(budget: float) -> int:
     return 1 + int(budget >= 90) + int(budget >= 160)
 
 
+MIN_TEST_BUDGET = 40.0  # below this the LAB doesn't backtest applicants
+
+
+def slots(world: World) -> int:
+    """Parallel LAB jobs: experiments and (player mode) applicant tests share them."""
+    if world.finances.lab_budget <= 0:
+        return 0
+    return _capacity(world.finances.lab_budget) * len(world.active_employees("researcher"))
+
+
+def pending_tests(world: World) -> int:
+    return sum(1 for c in world.candidates if c.lab_test_due is not None and c.lab_backtest_n is None)
+
+
+def free_slots(world: World) -> int:
+    running = sum(1 for x in world.experiments.values() if x.status == "running")
+    return slots(world) - running - pending_tests(world)
+
+
 def strategy_from_params(world: World, params: LabStrategyParams, name: str, author_id: str) -> Strategy:
     covered = sorted({c for d in world.active_departments() for c in d.competitions})
     s = Strategy(id=world.next_id("s"), name=name[:60] or "Unnamed idea", origin="lab", author_id=author_id,
@@ -70,6 +89,10 @@ async def lab_morning(world: World, index: SportsIndex, popular: set[str], gatew
         if budget <= 0 or len(running) >= _capacity(budget):
             if budget <= 0:
                 r.status, r.task = "idle", "No research budget"
+            continue
+        if pending_tests(world) and free_slots(world) <= 0:  # applicant tests the CEO asked for come first
+            if not running:
+                r.task = "Backtesting applicants' methods"
             continue
         last = world.milestones.get(f"lab_last_start:{r.id}")
         if last and (world.today.toordinal() - int(last)) < 3:
@@ -199,14 +222,34 @@ def run_audit(world: World) -> list[AuditFinding]:
 
 def evaluate_candidates(world: World, index: SportsIndex, popular: set[str]) -> None:
     """When the LAB has budget, it backtests applicants' methods before the CEO decides."""
-    if not world.active_employees("researcher") or world.finances.lab_budget < 40:
+    if not world.active_employees("researcher") or world.finances.lab_budget < MIN_TEST_BUDGET:
         return
-    covered = sorted({c for d in world.active_departments() for c in d.competitions})
     for c in world.candidates:
         if c.strategy_id is None or c.lab_backtest_n is not None or c.strategy_id not in world.strategies:
             continue
-        s = world.strategies[c.strategy_id]
-        res = backtest(index, world.matches.values(), s, popular, start=world.today - timedelta(days=240),
-                       end=world.today, competitions=s.competitions or covered)
-        c.lab_backtest_roi = round(res.roi, 4)
-        c.lab_backtest_n = res.sample_size
+        _test_candidate(world, index, popular, c)
+
+
+def _test_candidate(world: World, index: SportsIndex, popular: set[str], c) -> None:
+    covered = sorted({x for d in world.active_departments() for x in d.competitions})
+    s = world.strategies[c.strategy_id]
+    res = backtest(index, world.matches.values(), s, popular, start=world.today - timedelta(days=240),
+                   end=world.today, competitions=s.competitions or covered)
+    c.lab_backtest_roi = round(res.roi, 4)
+    c.lab_backtest_n = res.sample_size
+
+
+def run_candidate_tests(world: World, index: SportsIndex, popular: set[str]) -> None:
+    """Player mode: finish the applicant tests the CEO asked for."""
+    done = []
+    for c in world.candidates:
+        if c.lab_test_due is None or c.lab_test_due > world.today or c.lab_backtest_n is not None:
+            continue
+        if c.strategy_id not in world.strategies:
+            c.lab_test_due = None
+            continue
+        _test_candidate(world, index, popular, c)
+        done.append(f"{c.name}: ROI {c.lab_backtest_roi:+.1%} over {c.lab_backtest_n} bets")
+    if done:
+        history.record(world, "candidate_tests", f"LAB tested {len(done)} applicant(s)", "; ".join(done) + ".", 1,
+                       "neutral", [r.id for r in world.active_employees("researcher")])

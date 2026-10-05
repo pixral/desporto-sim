@@ -2,6 +2,7 @@ import { api } from "../api/client";
 import { useStore } from "../state/store";
 import { eur, monthLabel, pct, shortDate, signedEur, tone } from "../util/format";
 import { useLive } from "../util/hooks";
+import { DeskActions } from "./CeoActions";
 import { ColumnChart } from "./charts";
 import { Portrait } from "./Portrait";
 
@@ -9,7 +10,7 @@ export function DepartmentPanel({ id }: { id: string }) {
   const state = useStore((s) => s.state);
   const close = useStore((s) => s.selectDepartment);
   const selectEmployee = useStore((s) => s.selectEmployee);
-  const { data: d } = useLive(() => api.department(id), `${id}:${state?.clock.day_index}`);
+  const { data: d, reload } = useLive(() => api.department(id), `${id}:${state?.clock.day_index}`);
   const color = state?.departments.find((x) => x.id === id)?.color ?? "#888";
   return (
     <div className="drawer" role="dialog" aria-label="Department details">
@@ -32,6 +33,7 @@ export function DepartmentPanel({ id }: { id: string }) {
           <div className="empty">Loading…</div>
         ) : (
           <>
+            <DeskActions d={d} onDone={reload} />
             {d.kind !== "lab" && (
               <div className="panel">
                 <div className="stats">

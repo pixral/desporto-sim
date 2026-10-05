@@ -12,6 +12,7 @@ from .company import DailyPoint, Department, Finances, MonthlyReport
 from .events import HistoryEvent, ManagementLog, Memo
 from .lab import AuditFinding, Experiment
 from .people import Candidate, Employee
+from .player import PlayerState
 from .sports import CompetitionInfo, Match, Team, TeamNews
 from .strategy import Strategy
 
@@ -33,6 +34,11 @@ class RunConfig(Model):
     difficulty: str = "normal"
     sports_provider: str = "mock"
     ai_provider: str = "mock"
+    # player mode: a human runs the company; `ceo_style` is then the advisor's style
+    player_ceo: bool = False
+    player_name: str = ""
+    pause_mode: str = "monthly"  # every_review | monthly | events_only
+    ironman: bool = False  # no sandbox, only the latest save can be loaded
 
 
 class ClockState(Model):
@@ -140,6 +146,11 @@ class RunSummary(Model):
     ceo_changes: int = 0
     seasons: int = 0
     god_actions: int = 0
+    end_kind: str | None = None  # bankrupt | fired | retired
+    player_ceo: bool = False
+    reviews_signed: int = 0
+    advice_taken: int = 0
+    advice_skipped: int = 0
 
 
 class World(Model):
@@ -170,6 +181,7 @@ class World(Model):
     recaps: list[SeasonRecap] = Field(default_factory=list)
     city: CityState = Field(default_factory=CityState)
     office: OfficeState = Field(default_factory=OfficeState)
+    player: PlayerState = Field(default_factory=PlayerState)
     counters: dict[str, int] = Field(default_factory=dict)
     milestones: dict[str, Any] = Field(default_factory=dict)
     stats: RunStats = Field(default_factory=RunStats)
@@ -178,6 +190,7 @@ class World(Model):
     provider_state: dict[str, Any] = Field(default_factory=dict)
     ended: bool = False
     end_reason: str | None = None
+    end_kind: str | None = None  # bankrupt | fired | retired
     summary: RunSummary | None = None
 
     # ---- helpers -------------------------------------------------------------------------

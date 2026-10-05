@@ -46,4 +46,9 @@ def build_summary(world: World) -> RunSummary:
         ceo_changes=world.stats.ceo_changes,
         seasons=len(world.recaps),
         god_actions=world.stats.god_actions,
+        end_kind=world.end_kind,
+        player_ceo=world.config.player_ceo,
+        reviews_signed=world.player.reviews_signed,
+        advice_taken=world.player.advice_taken,
+        advice_skipped=world.player.advice_skipped,
     )

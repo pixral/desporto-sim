@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { api } from "./api/client";
+import { Briefing, SignoffResults } from "./components/Briefing";
 import { DepartmentPanel } from "./components/DepartmentPanel";
 import { EmployeePanel } from "./components/EmployeePanel";
 import { EndScreen } from "./components/EndScreen";
@@ -48,7 +49,8 @@ export function App() {
       const s = useStore.getState();
       if (e.key === " " && s.state && !s.state.run.ended) {
         e.preventDefault();
-        api.control(s.state.runner.running ? "pause" : "resume").catch(() => undefined);
+        if (s.state.player?.review_open) s.setBriefingHidden(null); // the clock waits for the briefing
+        else api.control(s.state.runner.running ? "pause" : "resume").catch(() => undefined);
       } else if (e.key === "Escape") {
         s.selectEmployee(null);
         s.selectDepartment(null);
@@ -98,6 +100,8 @@ export function App() {
       <EndScreen />
       <RecapModal />
       <GodPanel />
+      <Briefing />
+      <SignoffResults />
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

@@ -69,9 +69,34 @@ def hypothesize(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
         params["competitions"] = [rng.choice(comps)]
     elif not params.get("competitions"):
         params["competitions"] = list(comps)
+    brief = ctx.get("brief")  # player mode only: the CEO's research brief
+    if brief:
+        if rng.random() < 0.6 * t["stubborn"]:
+            origin += ", ignoring the CEO's brief"
+        else:
+            _apply_brief(params, brief, bounds)
+            origin += f", following the brief ({brief['label']})"
     name = _name(params, changed, rng)
     return {"name": name, "hypothesis": _hypothesis(params), "rationale": f"{r['name']}'s idea, {origin}; "
             f"tweaking {', '.join(c.replace('_', ' ') for c in changed)}.", "params": params}
+
+
+def _apply_brief(params: dict[str, Any], brief: dict[str, Any], bounds: dict[str, list[float]]) -> None:
+    kind, value = brief.get("kind"), brief.get("value")
+    if kind == "competition" and value:
+        params["competitions"] = [value]
+    elif kind == "desk" and brief.get("competitions"):
+        params["competitions"] = list(brief["competitions"])
+    elif kind == "market" and value:
+        params["markets"] = [value]
+        if value in ("over_2_5", "under_2_5"):
+            params["fade_popular"] = False
+    elif kind == "underdogs":
+        params["underdog_bias"] = clamp(max(float(params.get("underdog_bias", 0.0)), 0.03), *bounds["underdog_bias"])
+        params["min_odds"] = clamp(max(float(params["min_odds"]), 2.4), *bounds["min_odds"])
+        params["max_odds"] = clamp(max(float(params["max_odds"]), 7.0), *bounds["max_odds"])
+        if not set(params["markets"]) & {"home_win", "away_win"}:
+            params["markets"] = ["home_win", "away_win"]
 
 
 def _name(p: dict[str, Any], changed: list[str], rng: random.Random) -> str:

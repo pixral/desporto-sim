@@ -169,6 +169,11 @@ export interface RunSummary {
   ceo_changes: number;
   seasons: number;
   god_actions?: number;
+  end_kind?: "bankrupt" | "fired" | "retired" | null;
+  player_ceo?: boolean;
+  reviews_signed?: number;
+  advice_taken?: number;
+  advice_skipped?: number;
 }
 
 export interface StateView {
@@ -184,6 +189,8 @@ export interface StateView {
     ai_provider: string;
     sports_provider: string;
     founded: string;
+    player_ceo: boolean;
+    end_kind: "bankrupt" | "fired" | "retired" | null;
   };
   clock: {
     now: string;
@@ -194,7 +201,7 @@ export interface StateView {
     next_phase: string;
     day_index: number;
   };
-  runner: { running: boolean; speed: string; speeds: string[]; phase_seconds: number };
+  runner: { running: boolean; speed: string; speeds: string[]; phase_seconds: number; resume_after_review?: boolean };
   kpis: Kpis;
   departments: DepartmentCard[];
   employees: EmployeeCard[];
@@ -208,7 +215,250 @@ export interface StateView {
   latest_recap: { id: string; season: string } | null;
   office: OfficeView;
   city: CityBrief;
-  sandbox: { god_actions: number };
+  sandbox: { god_actions: number; locked?: boolean };
+  player: PlayerView | null;
+}
+
+export type ActionType =
+  | "FIRE" | "HIRE" | "PROMOTE" | "WARN" | "CLEAR_REVIEW" | "TRANSFER_EMPLOYEE"
+  | "SET_STAKE_LIMIT" | "FUND_DEPARTMENT" | "WITHDRAW_BANKROLL" | "CREATE_DEPARTMENT" | "CLOSE_DEPARTMENT"
+  | "SET_LAB_BUDGET" | "SET_MARKETING_BUDGET" | "DEPLOY_STRATEGY" | "ADJUST_STRATEGY"
+  | "FREEZE_HIRING" | "UNFREEZE_HIRING" | "CUT_SALARIES" | "TAKE_LOAN" | "REPAY_LOAN"
+  | "LEASE_SPACE" | "RELEASE_SPACE" | "TEAM_EVENT" | "GIVE_TIME_OFF" | "TALK"
+  | "SET_LAB_BRIEF" | "TEST_CANDIDATE" | "SHELVE_STRATEGY";
+
+export interface CeoAction {
+  type: ActionType;
+  employee_id?: string;
+  department_id?: string;
+  candidate_id?: string;
+  experiment_id?: string;
+  department_kind?: string;
+  amount?: number;
+  pct?: number;
+  field?: string;
+  value?: number;
+  facility?: "canteen" | "desk_wing" | "studio";
+  reason?: string;
+}
+
+export interface Proposal {
+  action: CeoAction;
+  label: string;
+  reason: string;
+  area: "people" | "hiring" | "desks" | "money" | "lab" | "office";
+}
+
+export interface ActionResult {
+  type: string;
+  params: Record<string, unknown>;
+  reason: string;
+  applied: boolean;
+  result: string;
+}
+
+export interface BoardLine {
+  floor_value: number;
+  drawdown_limit: number;
+  active_from_day: number;
+  watching: boolean;
+  warned: string | null;
+  easy: boolean;
+}
+
+export interface PlayerView {
+  name: string;
+  pause_mode: "every_review" | "monthly" | "events_only";
+  ironman: boolean;
+  advisor_style: string;
+  advisor_label: string;
+  advisor_thought: string;
+  review_open: boolean;
+  review_scope: "weekly" | "monthly" | null;
+  review_id: string | null;
+  severance_months: number;
+  limits_left: Record<string, number>;
+  weekly_limits: Record<string, number>;
+  talked_this_week: string[];
+  queue: Proposal[];
+  season: number;
+  seasons_total: number;
+  season_label: string;
+  days_to_season_end: number;
+  next_review: { date: string | null; scope: string | null };
+  board: BoardLine;
+  reviews_signed: number;
+  reviews_auto: number;
+  advice_taken: number;
+  advice_skipped: number;
+  office_actions: ActionType[];
+}
+
+export interface ReviewPerson {
+  id: string;
+  name: string;
+  role: string;
+  title: string;
+  level: number;
+  department: string | null;
+  department_id: string | null;
+  specialty: string;
+  tenure_days: number;
+  salary: number;
+  bets_90d: number;
+  roi_90d: number;
+  profit_90d: number;
+  z_90d: number;
+  career_profit: number;
+  career_bets: number;
+  career_roi: number;
+  strategy_age_days: number;
+  no_bet_rate: number;
+  reputation: number;
+  stress: number;
+  confidence: number;
+  mood: string;
+  under_review: boolean;
+  warnings: number;
+  streak: number;
+  away: string | null;
+  lost_nerve: boolean;
+  flags: string[];
+  flagged: boolean;
+  note: string;
+}
+
+export interface ReviewDesk {
+  id: string;
+  name: string;
+  kind: string;
+  competitions: string[];
+  preferred_specialties: string[];
+  bankroll: number;
+  stake_limit_pct: number;
+  profit_30d: number;
+  profit_90d: number;
+  roi_90d: number;
+  bets_90d: number;
+  z_90d: number;
+  headcount: number;
+  head: string | null;
+  age_days: number;
+  free_seats: number;
+  bookmaker_limits: Record<string, number>;
+}
+
+export interface ReviewCandidate {
+  id: string;
+  name: string;
+  role: string;
+  specialty: string;
+  specialty_label: string;
+  cv_rating: number;
+  experience: number;
+  salary_ask: number;
+  traits_text: string;
+  pitch: string;
+  lab_backtest_roi: number | null;
+  lab_backtest_n: number | null;
+  testable: boolean;
+  test_due: string | null;
+  expires: string;
+}
+
+export interface LabBrief {
+  kind: "competition" | "market" | "underdogs" | "desk";
+  value: string;
+  label: string;
+  since: string;
+  competitions: string[];
+}
+
+export interface LabSlots {
+  slots: number;
+  free_slots: number;
+  pending_tests: number;
+  brief: LabBrief | null;
+  min_test_budget: number;
+}
+
+export interface CandidatesView {
+  candidates: ReviewCandidate[];
+  desks: { id: string; name: string; preferred_specialties: string[]; free_seats: number }[];
+  lab: LabSlots & { department_id: string | null; free_seats: number; budget: number };
+  hiring_frozen: boolean;
+}
+
+export interface ReadyExperiment {
+  id: string;
+  name: string;
+  hypothesis: string;
+  sample: number;
+  roi: number;
+  drawdown: number;
+  recommendation: string;
+  holdout_roi: number | null;
+  holdout_sample: number;
+  competitions: string[];
+  markets: string[];
+}
+
+export interface ReviewView {
+  open: boolean;
+  id: string;
+  scope: "weekly" | "monthly";
+  date: string;
+  advisor: { style: string; label: string; description: string; thought: string; memo: string };
+  proposals: Proposal[];
+  queue: Proposal[];
+  company: {
+    status: string;
+    cash: number;
+    bankroll: number;
+    debt: number;
+    valuation: number;
+    peak_value: number;
+    drawdown: number;
+    runway_months: number | null;
+    monthly_burn: number;
+    monthly_costs: number;
+    months: { month: string; betting: number; expenses: number; subscriptions: number; net: number }[];
+    month_to_date_net: number;
+    subscribers: number;
+    marketing_budget: number;
+    lab_budget: number;
+    hiring_frozen: boolean;
+    credit_available: number;
+    starting_capital: number;
+    days_since_founding: number;
+    monthly_payroll: number;
+    days_since_team_event: number;
+  };
+  people: ReviewPerson[];
+  desks: ReviewDesk[];
+  lab: {
+    department_id: string | null;
+    budget: number;
+    researchers: string[];
+    ready: ReadyExperiment[];
+    audit: { id: string; employee_id: string; employee: string; text: string; bets: number; roi: number; field: string | null; value: number | null }[];
+    free_seats: number;
+  } & LabSlots;
+  competitions: { code: string; name: string }[];
+  candidates: ReviewCandidate[];
+  available_department_kinds: { kind: string; name: string }[];
+  office: {
+    facilities: { key: "canteen" | "desk_wing" | "studio"; name: string; leased: boolean; since: string | null; fit_out: number; monthly_cost: number; effect: string }[];
+    avg_staff_stress: number;
+    voluntary_departures_90d: number;
+  };
+  city: { headlines: string[]; betting_sector_sentiment: number; consumer_confidence: number; central_bank_rate_pct: number; credit_line_rate_monthly: number; active_effects: string[] };
+  limits: { max_fires: number; max_hires: number; max_desks: number; desks: number; max_desk_size: number; min_stake_pct: number; max_stake_pct: number };
+  review_only: { lease: boolean; team_event: boolean; hire: boolean };
+  board: BoardLine;
+  season: number;
+  seasons_total: number;
+  season_label: string;
 }
 
 export interface Facility {
@@ -369,6 +619,8 @@ export interface AiCallFull extends AiCallSummary {
 }
 
 export interface EmployeeDetail extends EmployeeCard {
+  advisor_note: string | null;
+  trust_in_ceo: number | null;
   department: string | null;
   hired: string;
   leave_reason: string | null;
@@ -498,10 +750,12 @@ export interface LabView {
 
 export interface ManagementEntry {
   time: string;
-  scope: "weekly" | "monthly";
+  scope: "weekly" | "monthly" | "office";
   thought: string;
   memo: string;
-  actions: { type: string; params: Record<string, unknown>; reason: string; applied: boolean; result: string }[];
+  actions: ActionResult[];
+  by: "ai" | "player" | "advisor";
+  skipped: string[];
 }
 
 export interface SaveInfo {
@@ -536,6 +790,7 @@ export interface Meta {
   default_model: string;
   paper_trading_only: boolean;
   difficulties: { key: string; capital: number; cost_mult: number; start_subs: number; market_xg: number }[];
+  pause_modes: { key: string; label: string; description: string }[];
 }
 
 export interface DepartmentDetail {

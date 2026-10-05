@@ -62,6 +62,10 @@ class Repository:
                 raise KeyError(save_id)
             return World.model_validate_json(zlib.decompress(row.snapshot))
 
+    def latest_save_id(self, run_id: str) -> int | None:
+        with self.Session() as s:
+            return s.scalar(select(func.max(SaveRow.id)).where(SaveRow.run_id == run_id))
+
     def list_saves(self, limit: int = 100) -> list[dict[str, Any]]:
         with self.Session() as s:
             rows = s.execute(

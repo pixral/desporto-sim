@@ -14,6 +14,7 @@ talks to a real-money betting platform. All bankrolls, stakes and salaries are s
 │ api/          REST routes, WebSocket hub, DTO builders                               │
 │ simulation/   engine (phases), runner (pause/speed), factory, history, summary, views │
 │               drama (people), lab, city (market + morning paper), god (sandbox tools) │
+│               player (CEO mode: briefings, office hours, queue, board, seasons)      │
 │ agents/       context builders, prompts, psychology, relationships, hiring,          │
 │               management (CEO action validation), policies/ (mock "brains")          │
 │ ai/           IAgentModelProvider, MockAgentModelProvider, AnthropicProvider,         │
@@ -49,7 +50,9 @@ Each simulated day has four phases (see [SIMULATION_RULES.md](SIMULATION_RULES.m
 
 1. **08:00 morning** – month close (payroll, costs, subscriptions) on the 1st, CEO monthly review,
    CEO weekly review on Mondays, sync fixtures/odds/news from the sports provider, print the morning paper
-   (`simulation/city.py`, own RNG stream), LAB work.
+   (`simulation/city.py`, own RNG stream), LAB work. In player mode a review the player takes stops the step
+   after the advisor's proposals (`World.player.review`); `engine.step()` returns `awaiting_ceo` until
+   `engine.resolve_review()` applies the player's decisions and finishes the morning.
 2. **11:00 analysis** – assign today's matches, run strategy models, share leanings with coworkers,
    tipsters decide BET / NO_BET (one AI call per tipster per day), paper bets are recorded.
 3. **16:00 matches** – kick-offs, closing odds captured, tipsters watch.
@@ -81,5 +84,9 @@ sports provider ──► World.matches (odds, results, news)          observabl
 * **A second dev stack next to a game in progress:** the `backend-dev` / `frontend-dev` entries in
   `.claude/launch.json` run on ports 8001/5174 with their own `data/dev.db` (Vite reads `DESPORTO_API_PORT`
   and `DESPORTO_UI_PORT`).
+* **Player mode** lives in `simulation/player.py` (rules), `domain/player.py` (state) and the engine's
+  `_ceo_review` / `resolve_review` / `office_action`. Endpoints: `GET/POST /api/review`, `POST /api/act`,
+  `POST/DELETE /api/queue`, `GET /api/candidates`. Any change that should not touch watch mode must keep
+  `python -m app.tools.golden` identical.
 * **Sandbox tools** live in `simulation/god.py`; `GET /api/god` lists what the backend supports so the UI never
   offers a tool that does not exist.

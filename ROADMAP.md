@@ -55,8 +55,15 @@ Mood events: burned-out people call in sick (empty chairs, no bets), shaken tips
 everything, heavy losers go on tilt and chase it the next day, cocky winners brag and start arguments; the CEO
 can give time off or throw a team night out (each style differently). Chaotic companies feel it most.
 
+CEO mode, phases 0 and 1 ([plan](docs/CEO_MODE_PLAN.md)): you can found a company and run it yourself, with the
+AI CEO as your advisor. Briefings stop the clock (monthly by default), office menus on people and desks,
+office hours with weekly limits, a queue for review-only decisions, the LAB brief and chosen applicant tests,
+the board's warning and firing, five seasons to retirement, ironman. Watch mode is guarded by golden runs.
+
 ## Next
 
+0. CEO mode phase 2: decisions that come to you (poaching, raises, investors, the press, tilt, regulators,
+   takeover bids), pilots and stopping experiments.
 1. Visual polish pass with fresh eyes on a long run (label overlap at small zoom, crowded Bench).
    Also show colleague influence and refusals visibly in the office (speech lines between desks).
 2. Run a short real Claude session (a few simulated days) to check prompt quality and cost per day.

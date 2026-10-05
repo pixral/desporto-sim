@@ -72,3 +72,62 @@ def test_api_city_office_and_sandbox(tmp_path):
         assert client.post("/api/god", json={"action": "disaster", "params": {"kind": "meteor"}}).status_code == 400
         assert client.get("/api/state").json()["sandbox"]["god_actions"] == 1
         assert client.get("/api/office").json()["desk_rooms"] == 6
+
+
+def test_api_player_mode(tmp_path):
+    settings = Settings(database_url=f"sqlite:///{(tmp_path / 'test.db').as_posix()}", ai_provider="mock",
+                        frontend_dist=tmp_path / "no-dist")
+    app = create_app(settings, autostart_run=False)
+    with TestClient(app) as client:
+        meta = client.get("/api/meta").json()
+        assert [m["key"] for m in meta["pause_modes"]] == ["monthly", "every_review", "events_only"]
+        r = client.post("/api/runs", json={"company_name": "Player FC", "seed": 5, "player_ceo": True,
+                                           "player_name": "Alex", "pause_mode": "every_review", "ironman": True})
+        assert r.status_code == 200, r.text
+        state = client.get("/api/state").json()
+        assert state["run"]["player_ceo"] and state["player"]["name"] == "Alex"
+        assert state["sandbox"]["locked"] and client.post("/api/god", json={"action": "windfall"}).status_code == 400
+        assert client.get("/api/review").json() == {"open": False}
+        assert client.post("/api/review", json={"actions": [], "memo": ""}).status_code == 400
+
+        first_save = client.post("/api/saves", json={"label": "day 0"}).json()["save_id"]
+        for _ in range(4):
+            client.post("/api/control", json={"action": "day"})
+        state = client.get("/api/state").json()
+        assert state["player"]["review_open"] and state["clock"]["weekday"] == "Monday"
+        review = client.get("/api/review").json()
+        assert review["open"] and review["scope"] == "weekly" and review["advisor"]["label"]
+
+        tipster = next(p for p in review["people"] if p["role"] == "tipster")
+        act = client.post("/api/act", json={"action": {"type": "TALK", "employee_id": tipster["id"]}}).json()
+        assert act["applied"], act
+        refused = client.post("/api/act", json={"action": {"type": "PROMOTE", "employee_id": tipster["id"]}}).json()
+        assert not refused["applied"] and "monthly review" in refused["result"]
+        assert client.post("/api/queue", json={"action": {"type": "PROMOTE", "employee_id": tipster["id"]}}).status_code == 200
+        assert len(client.get("/api/state").json()["player"]["queue"]) == 1
+        assert client.delete("/api/queue/0").status_code == 200
+        assert client.delete("/api/queue/0").status_code == 400
+
+        signed = client.post("/api/review", json={"actions": [{"type": "WARN", "employee_id": tipster["id"]}],
+                                                  "memo": "Eyes on the prize."}).json()
+        assert signed["results"][0]["applied"]
+        state = client.get("/api/state").json()
+        assert not state["player"]["review_open"]
+        mgmt = client.get("/api/management").json()
+        assert mgmt[0]["by"] == "player" or any(m["by"] == "player" for m in mgmt)
+        detail = client.get(f"/api/employees/{tipster['id']}").json()
+        assert detail["advisor_note"] and detail["under_review"]
+
+        client.post("/api/saves", json={"label": "later"})
+        assert client.post(f"/api/saves/{first_save}/load").status_code == 403  # ironman: latest save only
+
+
+def test_unknown_api_route_is_a_404_not_the_page(tmp_path):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html><title>app</title>")
+    settings = Settings(database_url=f"sqlite:///{(tmp_path / 'test.db').as_posix()}", ai_provider="mock",
+                        frontend_dist=dist)
+    with TestClient(create_app(settings, autostart_run=False)) as client:
+        assert client.get("/api/does-not-exist").status_code == 404
+        assert "<title>app</title>" in client.get("/office/anything").text

@@ -38,7 +38,9 @@ class ActionRecord(Model):
 
 class ManagementLog(Model):
     time: datetime
-    scope: Literal["weekly", "monthly"]
+    scope: Literal["weekly", "monthly", "office"]
     thought: str = ""
     memo: str = ""
     actions: list[ActionRecord] = Field(default_factory=list)
+    by: Literal["ai", "player", "advisor"] = "ai"  # who decided: the AI CEO, the player, or the advisor for them
+    skipped: list[str] = Field(default_factory=list)  # advisor suggestions the player turned down

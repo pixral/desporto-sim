@@ -206,4 +206,5 @@ class Candidate(Model):
     pitch: str = ""
     lab_backtest_roi: float | None = None
     lab_backtest_n: int | None = None
+    lab_test_due: date | None = None  # player mode: the CEO asked the LAB to test this applicant
     expires: date
