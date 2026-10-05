@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import type { AiCallFull, EmployeeDetail } from "../api/types";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
-import { eur, MARKET_LABEL, pct, shortDate, signedEur, tone } from "../util/format";
+import { eur, fmtNum, MARKET_LABEL, pct, shortDate, signedEur, tone } from "../util/format";
 import { useLive } from "../util/hooks";
 import { PersonActions } from "./CeoActions";
 import { LineChart } from "./charts";
@@ -29,6 +30,68 @@ function stressColor(v: number) {
   return v > 0.75 ? "var(--neg)" : v > 0.5 ? "var(--warn)" : "var(--pos)";
 }
 
+function tabLabel(k: T): string {
+  switch (k) {
+    case "overview":
+      return t("overview");
+    case "bets":
+      return t("bets");
+    case "performance":
+      return t("performance");
+    case "relationships":
+      return t("relationships");
+    case "history":
+      return t("history");
+    case "decisions":
+      return t("decisions");
+  }
+}
+
+/** The CEO's specialty reads "CEO — <style>". */
+function specialtyLabel(label: string): string {
+  return label.startsWith("CEO — ") ? `CEO — ${t(label.slice(6))}` : t(label);
+}
+
+function traitLabel(k: string): string {
+  switch (k) {
+    case "cautious":
+      return t("cautious|trait");
+    case "analytical":
+      return t("analytical|trait");
+    case "aggressive":
+      return t("aggressive|trait");
+    case "ambitious":
+      return t("ambitious|trait");
+    case "stubborn":
+      return t("stubborn|trait");
+    case "collaborative":
+      return t("collaborative|trait");
+    case "independent":
+      return t("independent|trait");
+    case "risk_seeking":
+      return t("risk-seeking|trait");
+    case "skeptical":
+      return t("skeptical|trait");
+    default:
+      return k.replace("_", "-");
+  }
+}
+
+function originLabel(o: string): string {
+  if (o === "default") return t("default");
+  if (o === "hire") return t("hire");
+  if (o === "lab") return t("lab");
+  return o;
+}
+
+function betStatusLabel(s: string): string {
+  if (s === "open") return t("open");
+  if (s === "won") return t("won");
+  if (s === "lost") return t("lost");
+  if (s === "void") return t("void");
+  return s;
+}
+
 export function EmployeePanel({ id }: { id: string }) {
   const state = useStore((s) => s.state);
   const close = useStore((s) => s.selectEmployee);
@@ -40,7 +103,7 @@ export function EmployeePanel({ id }: { id: string }) {
   const color = d?.role === "researcher" ? "#0e9aa7" : dept?.color ?? "#8a7f96";
 
   return (
-    <div className="drawer" role="dialog" aria-label="Employee details">
+    <div className="drawer" role="dialog" aria-label={t("Employee details")}>
       <div className="drawer-head">
         {d && <Portrait appearance={d.appearance} color={color} role={d.role} />}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -48,34 +111,38 @@ export function EmployeePanel({ id }: { id: string }) {
           {d && (
             <>
               <div className="dim">
-                {d.title} · {d.specialty_label}
+                {t(d.title)} · {specialtyLabel(d.specialty_label)}
               </div>
               <div className="muted">
-                {d.department ?? "No department"} · {d.tenure_days} days employed
-                {!d.active && d.leave_reason ? ` · left: ${d.leave_reason}` : ""}
+                {d.department ? t(d.department) : t("No department")} · {t("{n} days employed", { n: d.tenure_days })}
+                {!d.active && d.leave_reason ? ` · ${t("left: {reason}", { reason: d.leave_reason })}` : ""}
               </div>
               <div style={{ marginTop: 4 }}>
-                {d.under_review && <span className="pill lost" style={{ marginRight: 6 }}>under review</span>}
-                <span className="pill bet">{d.mood}</span>
+                {d.under_review && (
+                  <span className="pill lost" style={{ marginRight: 6 }}>
+                    {t("under review")}
+                  </span>
+                )}
+                <span className="pill bet">{t(d.mood)}</span>
               </div>
             </>
           )}
           {error && <div className="neg">{error}</div>}
         </div>
-        <button onClick={() => close(null)} aria-label="Close">
+        <button onClick={() => close(null)} aria-label={t("Close")}>
           ✕
         </button>
       </div>
       <div className="tabs">
-        {(["overview", "bets", "performance", "relationships", "history", "decisions"] as T[]).map((t) => (
-          <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
-            {t}
+        {(["overview", "bets", "performance", "relationships", "history", "decisions"] as T[]).map((k) => (
+          <button key={k} className={tab === k ? "active" : ""} onClick={() => setTab(k)}>
+            {tabLabel(k)}
           </button>
         ))}
       </div>
       <div className="drawer-body">
         {!d ? (
-          <div className="empty">Loading…</div>
+          <div className="empty">{t("Loading…")}</div>
         ) : tab === "overview" ? (
           <>
             <PersonActions d={d} onDone={reload} />
@@ -111,7 +178,7 @@ function Overview({ d }: { d: EmployeeDetail }) {
   return (
     <>
       <div className="panel">
-        <h3>Current task</h3>
+        <h3>{t("Current task")}</h3>
         <div style={{ margin: "4px 0" }}>{d.task || d.status}</div>
         {d.thought && <div className="thought">“{d.thought}”</div>}
       </div>
@@ -119,11 +186,11 @@ function Overview({ d }: { d: EmployeeDetail }) {
         <div className="panel">
           <div className="stats">
             <div className="stat">
-              <div className="label">Career P/L</div>
+              <div className="label">{t("Career P/L")}</div>
               <div className={`value ${tone(s.profit)}`}>{signedEur(s.profit, 2)}</div>
             </div>
             <div className="stat">
-              <div className="label">Recent P/L (30 bets)</div>
+              <div className="label">{t("Recent P/L (30 bets)")}</div>
               <div className={`value ${tone(s.recent30.profit)}`}>{signedEur(s.recent30.profit, 2)}</div>
             </div>
             <div className="stat">
@@ -131,56 +198,60 @@ function Overview({ d }: { d: EmployeeDetail }) {
               <div className="value">{pct(s.roi, 1, true)}</div>
             </div>
             <div className="stat">
-              <div className="label">Bets (W/L)</div>
+              <div className="label">{t("Bets (W/L)")}</div>
               <div className="value">
                 {s.bets} <span className="muted">({s.wins}/{s.losses})</span>
               </div>
             </div>
             <div className="stat">
-              <div className="label">Passes</div>
+              <div className="label">{t("Passes")}</div>
               <div className="value">{pct(s.no_bet_rate, 0)}</div>
             </div>
             <div className="stat">
-              <div className="label">Max stake</div>
+              <div className="label">{t("Max stake")}</div>
               <div className="value">{eur(d.max_stake, 2)}</div>
             </div>
             <div className="stat">
-              <div className="label">Salary / bonuses</div>
+              <div className="label">{t("Salary / bonuses")}</div>
               <div className="value">
                 {eur(d.salary)} <span className="muted">/ {eur(d.bonuses)}</span>
               </div>
             </div>
             <div className="stat">
-              <div className="label">Streak</div>
-              <div className="value">{d.streak > 0 ? `${d.streak}W` : d.streak < 0 ? `${-d.streak}L` : "—"}</div>
+              <div className="label">{t("Streak")}</div>
+              <div className="value">{d.streak > 0 ? t("{n}W", { n: d.streak }) : d.streak < 0 ? t("{n}L", { n: -d.streak }) : "—"}</div>
             </div>
           </div>
         </div>
       )}
       <div className="panel">
-        <h3>State of mind</h3>
-        <Meter label="Stress" value={d.stress} color={stressColor(d.stress)} />
-        <Meter label="Confidence" value={d.confidence} color="var(--series-1)" />
-        <Meter label="Risk tolerance" value={d.risk_tolerance} color="var(--series-2)" />
-        <Meter label="Reputation" value={d.reputation} max={100} color="var(--accent)" text={d.reputation.toFixed(0)} />
+        <h3>{t("State of mind")}</h3>
+        <Meter label={t("Stress")} value={d.stress} color={stressColor(d.stress)} />
+        <Meter label={t("Confidence")} value={d.confidence} color="var(--series-1)" />
+        <Meter label={t("Risk tolerance")} value={d.risk_tolerance} color="var(--series-2)" />
+        <Meter label={t("Reputation")} value={d.reputation} max={100} color="var(--accent)" text={d.reputation.toFixed(0)} />
       </div>
       <div className="panel">
-        <h3>Personality</h3>
+        <h3>{t("Personality")}</h3>
         <div className="dim" style={{ margin: "4px 0 6px" }}>
           {d.traits_text}
         </div>
         {Object.entries(d.traits).map(([k, v]) => (
-          <Meter key={k} label={k.replace("_", "-")} value={v} color="var(--line-strong)" />
+          <Meter key={k} label={traitLabel(k)} value={v} color="var(--line-strong)" />
         ))}
       </div>
       {d.strategy && (
         <div className="panel">
-          <h3>Strategy: {d.strategy.name}</h3>
+          <h3>{t("Strategy: {name}", { name: d.strategy.name })}</h3>
           <div style={{ margin: "4px 0" }}>{d.strategy.summary}</div>
           <div className="muted">
-            Origin: {d.strategy.origin} · live {d.strategy.live_bets} bets, ROI {pct(d.strategy.live_roi, 1, true)}
+            {t("Origin: {origin} · live {n} bets, ROI {roi}", {
+              origin: originLabel(d.strategy.origin),
+              n: d.strategy.live_bets,
+              roi: pct(d.strategy.live_roi, 1, true),
+            })}
             {d.strategy.backtest
-              ? ` · backtest ${d.strategy.backtest.sample_size} bets, ROI ${pct(d.strategy.backtest.roi, 1, true)}`
+              ? ` · ${t("backtest {n} bets, ROI {roi}", { n: d.strategy.backtest.sample_size, roi: pct(d.strategy.backtest.roi, 1, true) })}`
               : ""}
           </div>
         </div>
@@ -190,16 +261,16 @@ function Overview({ d }: { d: EmployeeDetail }) {
 }
 
 function Bets({ d }: { d: EmployeeDetail }) {
-  if (!d.bets_list.length) return <div className="empty">No bets yet.</div>;
+  if (!d.bets_list.length) return <div className="empty">{t("No bets yet.")}</div>;
   return (
     <table className="tab-nums">
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Match / pick</th>
-          <th className="r">Stake</th>
-          <th className="r">Odds</th>
-          <th className="r">Result</th>
+          <th>{t("Date")}</th>
+          <th>{t("Match / pick")}</th>
+          <th className="r">{t("Stake")}</th>
+          <th className="r">{t("Odds")}</th>
+          <th className="r">{t("Result")}</th>
         </tr>
       </thead>
       <tbody>
@@ -209,18 +280,18 @@ function Bets({ d }: { d: EmployeeDetail }) {
             <td>
               <div>{b.match}</div>
               <div className="muted">
-                {b.selection} ({MARKET_LABEL[b.market]}) @ {b.book}
+                {t(b.selection)} ({MARKET_LABEL[b.market]}) @ {b.book}
                 {b.score ? ` · ${b.score}` : ""}
-                {b.influenced_by.length ? ` · swayed by ${b.influenced_by.join(", ")}` : ""}
+                {b.influenced_by.length ? ` · ${t("swayed by {names}", { names: b.influenced_by.join(", ") })}` : ""}
               </div>
             </td>
             <td className="r">{eur(b.stake, 2)}</td>
             <td className="r">
-              {b.odds.toFixed(2)}
+              {fmtNum(b.odds, 2)}
               {b.clv !== null && <div className="muted">CLV {pct(b.clv, 1, true)}</div>}
             </td>
             <td className="r">
-              <span className={`pill ${b.status}`}>{b.status}</span>
+              <span className={`pill ${b.status}`}>{betStatusLabel(b.status)}</span>
               {b.status !== "open" && <div className={tone(b.profit)}>{signedEur(b.profit, 2)}</div>}
             </td>
           </tr>
@@ -231,34 +302,39 @@ function Bets({ d }: { d: EmployeeDetail }) {
 }
 
 function Performance({ d }: { d: EmployeeDetail }) {
-  if (d.series.length < 2) return <div className="empty">Not enough history yet.</div>;
-  const x = d.series.map((r) => `Day ${r[0]}`);
+  if (d.series.length < 2) return <div className="empty">{t("Not enough history yet.")}</div>;
+  const x = d.series.map((r) => t("Day {n}", { n: r[0] }));
   return (
     <>
       <div className="panel">
-        <h3>Cumulative P/L</h3>
-        <LineChart x={x} series={[{ key: "pl", label: "Cumulative P/L", color: "var(--series-1)", values: d.series.map((r) => r[1]) }]} format={(v) => eur(v)} zeroLine />
+        <h3>{t("Cumulative P/L")}</h3>
+        <LineChart
+          x={x}
+          series={[{ key: "pl", label: t("Cumulative P/L"), color: "var(--series-1)", values: d.series.map((r) => r[1]) }]}
+          format={(v) => eur(v)}
+          zeroLine
+        />
       </div>
       <div className="panel">
-        <h3>Reputation, stress and confidence (0–100)</h3>
+        <h3>{t("Reputation, stress and confidence (0–100)")}</h3>
         <LineChart
           x={x}
           series={[
-            { key: "rep", label: "Reputation", color: "var(--series-1)", values: d.series.map((r) => r[2]) },
-            { key: "stress", label: "Stress", color: "var(--series-2)", values: d.series.map((r) => r[3] * 100) },
-            { key: "conf", label: "Confidence", color: "var(--series-3)", values: d.series.map((r) => r[4] * 100) },
+            { key: "rep", label: t("Reputation"), color: "var(--series-1)", values: d.series.map((r) => r[2]) },
+            { key: "stress", label: t("Stress"), color: "var(--series-2)", values: d.series.map((r) => r[3] * 100) },
+            { key: "conf", label: t("Confidence"), color: "var(--series-3)", values: d.series.map((r) => r[4] * 100) },
           ]}
           format={(v) => v.toFixed(0)}
         />
       </div>
       {Object.keys(d.stats.by_market).length > 0 && (
         <div className="panel">
-          <h3>By market</h3>
+          <h3>{t("By market")}</h3>
           <table className="tab-nums">
             <thead>
               <tr>
-                <th>Market</th>
-                <th className="r">Bets</th>
+                <th>{t("Market")}</th>
+                <th className="r">{t("Bets")}</th>
                 <th className="r">ROI</th>
               </tr>
             </thead>
@@ -280,18 +356,18 @@ function Performance({ d }: { d: EmployeeDetail }) {
 
 function Relationships({ d }: { d: EmployeeDetail }) {
   const select = useStore((s) => s.selectEmployee);
-  if (!d.relationships.length) return <div className="empty">No colleagues yet.</div>;
+  if (!d.relationships.length) return <div className="empty">{t("No colleagues yet.")}</div>;
   return (
     <>
       {d.relationships.map((r) => (
         <div key={r.id} className="panel" style={{ cursor: "pointer" }} onClick={() => select(r.id)}>
           <div className="panel-title" style={{ marginBottom: 4 }}>
             <b>{r.name}</b>
-            <span className="muted">{r.title}</span>
+            <span className="muted">{t(r.title)}</span>
           </div>
-          <Meter label="Trust" value={r.trust} max={100} color="var(--series-1)" text={r.trust.toFixed(0)} />
-          <Meter label="Respect" value={r.respect} max={100} color="var(--series-3)" text={r.respect.toFixed(0)} />
-          <Meter label="Rivalry" value={r.rivalry} max={100} color="var(--series-2)" text={r.rivalry.toFixed(0)} />
+          <Meter label={t("Trust")} value={r.trust} max={100} color="var(--series-1)" text={r.trust.toFixed(0)} />
+          <Meter label={t("Respect")} value={r.respect} max={100} color="var(--series-3)" text={r.respect.toFixed(0)} />
+          <Meter label={t("Rivalry")} value={r.rivalry} max={100} color="var(--series-2)" text={r.rivalry.toFixed(0)} />
         </div>
       ))}
     </>
@@ -303,14 +379,14 @@ function Decisions({ d, onCall }: { d: EmployeeDetail; onCall: (id: number) => v
     <>
       {d.ai_calls.length > 0 && (
         <div className="panel">
-          <h3>Recent AI calls</h3>
+          <h3>{t("Recent AI calls")}</h3>
           <table className="tab-nums">
             <tbody>
               {d.ai_calls.map((c) => (
                 <tr key={c.id} className="clickable" onClick={() => onCall(c.id)}>
                   <td className="muted">{shortDate(c.sim_time)}</td>
                   <td>{c.purpose}</td>
-                  <td>{c.ok ? "ok" : <span className="neg">failed</span>}</td>
+                  <td>{c.ok ? "ok" : <span className="neg">{t("failed")}</span>}</td>
                   <td className="r">{c.input_tokens + c.output_tokens} tok</td>
                   <td className="r">${c.cost_usd.toFixed(4)}</td>
                 </tr>
@@ -319,24 +395,25 @@ function Decisions({ d, onCall }: { d: EmployeeDetail; onCall: (id: number) => v
           </table>
         </div>
       )}
-      {!d.decisions.length && <div className="empty">No decisions logged yet.</div>}
+      {!d.decisions.length && <div className="empty">{t("No decisions logged yet.")}</div>}
       {d.decisions.map((x, i) => (
         <div key={i} className="panel">
           <div className="panel-title" style={{ marginBottom: 4 }}>
             <span>
-              <span className={`pill ${x.decision === "BET" ? "bet" : "nobet"}`}>{x.decision === "BET" ? "BET" : "NO BET"}</span>{" "}
+              <span className={`pill ${x.decision === "BET" ? "bet" : "nobet"}`}>{x.decision === "BET" ? t("BET") : t("NO BET")}</span>{" "}
               {x.match_label}
             </span>
             <span className="muted">{shortDate(x.time)}</span>
           </div>
           {x.decision === "BET" && (
             <div>
-              {x.selection} @ {x.odds?.toFixed(2)} · stake {eur(x.stake ?? 0, 2)} · confidence {pct(x.confidence, 0)}
-              {x.model_edge !== null && <span className="muted"> · model edge {pct(x.model_edge, 1, true)}</span>}
+              {x.selection ? t(x.selection) : x.selection} @ {x.odds == null ? x.odds : fmtNum(x.odds, 2)} ·{" "}
+              {t("stake {amount} · confidence {pct}", { amount: eur(x.stake ?? 0, 2), pct: pct(x.confidence, 0) })}
+              {x.model_edge !== null && <span className="muted"> · {t("model edge {pct}", { pct: pct(x.model_edge, 1, true) })}</span>}
             </div>
           )}
           <div className="thought">“{x.reason}”</div>
-          {x.influenced_by.length > 0 && <div className="muted">Influenced by {x.influenced_by.join(", ")}</div>}
+          {x.influenced_by.length > 0 && <div className="muted">{t("Influenced by {names}", { names: x.influenced_by.join(", ") })}</div>}
           {x.notes.map((n) => (
             <div key={n} className="muted">
               ⚑ {n}
@@ -351,7 +428,7 @@ function Decisions({ d, onCall }: { d: EmployeeDetail; onCall: (id: number) => v
 export function PromptModal({ call, onClose }: { call: AiCallFull; onClose: () => void }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="AI call">
+      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t("AI call")}>
         <div className="panel-title">
           <h2>
             {call.agent_name} · {call.purpose}
@@ -359,15 +436,16 @@ export function PromptModal({ call, onClose }: { call: AiCallFull; onClose: () =
           <button onClick={onClose}>✕</button>
         </div>
         <div className="muted" style={{ marginBottom: 10 }}>
-          {call.provider} / {call.model} · {call.input_tokens} in + {call.output_tokens} out tokens
-          {call.estimated ? " (estimated)" : ""} · ${call.cost_usd.toFixed(4)} · {call.latency_ms.toFixed(0)} ms · retries {call.retries}
-          {call.error ? ` · error: ${call.error}` : ""}
+          {call.provider} / {call.model} · {t("{input} in + {output} out tokens", { input: call.input_tokens, output: call.output_tokens })}
+          {call.estimated ? ` ${t("(estimated)")}` : ""} · ${call.cost_usd.toFixed(4)} · {call.latency_ms.toFixed(0)} ms ·{" "}
+          {t("retries {n}", { n: call.retries })}
+          {call.error ? ` · ${t("error: {error}", { error: call.error })}` : ""}
         </div>
-        <h3>System prompt</h3>
+        <h3>{t("System prompt")}</h3>
         <pre className="prompt">{call.system}</pre>
-        <h3 style={{ marginTop: 10 }}>Prompt</h3>
+        <h3 style={{ marginTop: 10 }}>{t("Prompt")}</h3>
         <pre className="prompt">{call.prompt}</pre>
-        <h3 style={{ marginTop: 10 }}>Response</h3>
+        <h3 style={{ marginTop: 10 }}>{t("Response")}</h3>
         <pre className="prompt">{call.response}</pre>
       </div>
     </div>

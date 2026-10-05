@@ -1,15 +1,26 @@
 import { useState } from "react";
 import { api } from "../api/client";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
 import { eur } from "../util/format";
 import { useLive } from "../util/hooks";
 
 const DISASTER_LABEL: Record<string, string> = {
-  fire: "Server-room fire",
-  flood: "Office flood",
-  lawsuit: "Lawsuit",
-  hack: "Data breach",
-  tax: "Tax audit",
+  get fire() {
+    return t("Server-room fire");
+  },
+  get flood() {
+    return t("Office flood");
+  },
+  get lawsuit() {
+    return t("Lawsuit");
+  },
+  get hack() {
+    return t("Data breach");
+  },
+  get tax() {
+    return t("Tax audit");
+  },
 };
 const STYLE_LABEL: Record<string, string> = {
   conservative_operator: "Conservative operator",
@@ -55,42 +66,57 @@ export function GodPanel() {
   };
   const disabled = busy || ended;
   const suggested = Math.max(2000, Math.round((0.25 * value) / 100) * 100);
+  const cost = eur(
+    (cat?.disasters.find((d) => d.key === disaster)?.share ?? 0.1) *
+      ({ minor: 0.5, major: 1, catastrophic: 2 }[severity] ?? 1) *
+      Math.max(value, 0.4 * state.run.starting_capital),
+  );
+  const disasterCost =
+    disaster === "hack"
+      ? t("Costs about {amount} and a share of subscribers, plus stress for everyone.", { amount: cost })
+      : disaster === "fire"
+        ? t("Costs about {amount} and any running LAB experiments, plus stress for everyone.", { amount: cost })
+        : t("Costs about {amount}, plus stress for everyone.", { amount: cost });
 
   return (
     <div className="modal-backdrop" onClick={() => setOpen(false)}>
-      <div className="modal god" role="dialog" aria-label="Sandbox tools" onClick={(e) => e.stopPropagation()}>
+      <div className="modal god" role="dialog" aria-label={t("Sandbox tools")} onClick={(e) => e.stopPropagation()}>
         <div className="panel-title">
-          <h2>Sandbox tools</h2>
-          <button onClick={() => setOpen(false)} aria-label="Close">
+          <h2>{t("Sandbox tools")}</h2>
+          <button onClick={() => setOpen(false)} aria-label={t("Close")}>
             ✕
           </button>
         </div>
         <p className="dim">
-          Play god. Everything here really happens in the simulation, is written into the company history and shows up
-          on the end screen ({state.sandbox.god_actions} intervention{state.sandbox.god_actions === 1 ? "" : "s"} so far).
+          {t("Play god. Everything here really happens in the simulation, is written into the company history and shows up on the end screen ({count} so far).", {
+            count:
+              state.sandbox.god_actions === 1
+                ? t("{n} intervention", { n: state.sandbox.god_actions })
+                : t("{n} interventions", { n: state.sandbox.god_actions }),
+          })}
         </p>
-        {ended && <p className="neg">This company is gone. Found a new one to keep playing.</p>}
+        {ended && <p className="neg">{t("This company is gone. Found a new one to keep playing.")}</p>}
 
         <div className="god-grid">
           <section>
-            <h3>Money</h3>
+            <h3>{t("Money")}</h3>
             <label>
-              An investor puts in
+              {t("An investor puts in")}
               <div className="row">
                 <input type="number" min={100} step={100} placeholder={String(suggested)} value={invest}
                   onChange={(e) => setInvest(e.target.value)} />
                 <button disabled={disabled} onClick={() => run("invest", { amount: Number(invest || suggested) })}>
-                  Invest
+                  {t("Invest")}
                 </button>
               </div>
             </label>
             <label>
-              Windfall
+              {t("Windfall")}
               <div className="row">
                 <select value={windKind} onChange={(e) => setWindKind(e.target.value)}>
                   {(cat?.windfalls ?? []).map((w) => (
                     <option key={w.key} value={w.key}>
-                      {w.label}
+                      {t(w.label)}
                     </option>
                   ))}
                 </select>
@@ -98,15 +124,15 @@ export function GodPanel() {
               <div className="row">
                 <input type="number" min={100} step={100} value={windfall} onChange={(e) => setWindfall(e.target.value)} />
                 <button disabled={disabled} onClick={() => run("windfall", { amount: Number(windfall), kind: windKind })}>
-                  Grant
+                  {t("Grant")}
                 </button>
               </div>
             </label>
-            <div className="muted">Investor money is not profit; windfalls count as other income.</div>
+            <div className="muted">{t("Investor money is not profit; windfalls count as other income.")}</div>
           </section>
 
           <section>
-            <h3>Disasters</h3>
+            <h3>{t("Disasters")}</h3>
             <div className="row wrap">
               {(cat?.disasters ?? []).map((d) => (
                 <button key={d.key} className={disaster === d.key ? "active" : ""} onClick={() => setDisaster(d.key)}>
@@ -117,34 +143,26 @@ export function GodPanel() {
             <div className="row wrap">
               {(cat?.severities ?? []).map((s) => (
                 <button key={s} className={severity === s ? "active" : ""} onClick={() => setSeverity(s)}>
-                  {s}
+                  {t(s)}
                 </button>
               ))}
             </div>
-            <div className="muted">
-              Costs about {eur(
-                ((cat?.disasters.find((d) => d.key === disaster)?.share ?? 0.1) *
-                  ({ minor: 0.5, major: 1, catastrophic: 2 }[severity] ?? 1) *
-                  Math.max(value, 0.4 * state.run.starting_capital)),
-              )}
-              {disaster === "hack" ? " and a share of subscribers" : ""}
-              {disaster === "fire" ? " and any running LAB experiments" : ""}, plus stress for everyone.
-            </div>
+            <div className="muted">{disasterCost}</div>
             <button className="danger" disabled={disabled} onClick={() => run("disaster", { kind: disaster, severity })}>
-              Unleash
+              {t("Unleash")}
             </button>
           </section>
 
           <section>
-            <h3>The city</h3>
+            <h3>{t("The city")}</h3>
             <label>
-              Move the stock market
+              {t("Move the stock market")}
               <div className="row">
                 <select value={sector} onChange={(e) => setSector(e.target.value)}>
-                  <option value="all">Whole market</option>
+                  <option value="all">{t("Whole market")}</option>
                   {(cat?.sectors ?? []).map((s) => (
                     <option key={s} value={s}>
-                      {s}
+                      {t(s)}
                     </option>
                   ))}
                 </select>
@@ -153,20 +171,20 @@ export function GodPanel() {
               </div>
             </label>
             <button disabled={disabled || move === 0} onClick={() => run("market", { sector, pct: move / 100 })}>
-              {move < 0 ? "Crash" : "Rally"}
+              {move < 0 ? t("Crash") : t("Rally")}
             </button>
-            <div className="muted">Betting shares set the value of our subscriber business.</div>
+            <div className="muted">{t("Betting shares set the value of our subscriber business.")}</div>
             <label>
-              Plant a headline in the morning paper
-              <input type="text" maxLength={120} placeholder="Crane collapses at the new stadium" value={headline}
+              {t("Plant a headline in the morning paper")}
+              <input type="text" maxLength={120} placeholder={t("Crane collapses at the new stadium")} value={headline}
                 onChange={(e) => setHeadline(e.target.value)} />
             </label>
             <div className="row">
-              <select value={ticker} onChange={(e) => setTicker(e.target.value)} aria-label="Company affected">
-                <option value="">No stock affected</option>
-                {["ATLS", "NORD", "KICK", "PVTV", "BRKH", "STRD", "NEUR", "STAT", "PBNK", "VOLT", "SKYP", "MESA"].map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+              <select value={ticker} onChange={(e) => setTicker(e.target.value)} aria-label={t("Company affected")}>
+                <option value="">{t("No stock affected")}</option>
+                {["ATLS", "NORD", "KICK", "PVTV", "BRKH", "STRD", "NEUR", "STAT", "PBNK", "VOLT", "SKYP", "MESA"].map((tk) => (
+                  <option key={tk} value={tk}>
+                    {tk}
                   </option>
                 ))}
               </select>
@@ -181,68 +199,69 @@ export function GodPanel() {
             <button disabled={disabled || !headline.trim()}
               onClick={() => run("headline", { headline, ticker, pct: ticker ? tickerMove / 100 : 0,
                 section: ticker ? "business" : "city" })}>
-              Print it
+              {t("Print it")}
             </button>
           </section>
 
           <section>
-            <h3>People</h3>
+            <h3>{t("People")}</h3>
             <div className="row wrap">
-              <button disabled={disabled} onClick={() => run("morale", { delta: 0.2 })}>Team retreat</button>
-              <button disabled={disabled} onClick={() => run("morale", { delta: -0.2 })}>Panic wave</button>
-              <button disabled={disabled} onClick={() => run("star", {})}>Star applicant</button>
+              <button disabled={disabled} onClick={() => run("morale", { delta: 0.2 })}>{t("Team retreat")}</button>
+              <button disabled={disabled} onClick={() => run("morale", { delta: -0.2 })}>{t("Panic wave")}</button>
+              <button disabled={disabled} onClick={() => run("star", {})}>{t("Star applicant")}</button>
             </div>
             <div className="row wrap">
-              <button disabled={disabled} onClick={() => run("subscribers", { delta: 50 })}>Viral tip +50 subs</button>
-              <button disabled={disabled} onClick={() => run("subscribers", { delta: -30 })}>Bad press −30 subs</button>
+              <button disabled={disabled} onClick={() => run("subscribers", { delta: 50 })}>{t("Viral tip +50 subs")}</button>
+              <button disabled={disabled} onClick={() => run("subscribers", { delta: -30 })}>{t("Bad press −30 subs")}</button>
             </div>
             <label>
-              Replace the CEO with
+              {t("Replace the CEO with")}
               <div className="row">
                 <select value={style} onChange={(e) => setStyle(e.target.value)}>
                   {(cat?.ceo_styles ?? []).map((s) => (
                     <option key={s} value={s}>
-                      {STYLE_LABEL[s] ?? s}
+                      {t(STYLE_LABEL[s] ?? s)}
                     </option>
                   ))}
                 </select>
                 <button disabled={disabled} onClick={() => run("replace_ceo", { style })}>
-                  Replace
+                  {t("Replace")}
                 </button>
               </div>
             </label>
           </section>
 
           <section>
-            <h3>Office</h3>
+            <h3>{t("Office")}</h3>
             {state.office.facilities.map((f) => (
               <div className="row between" key={f.key}>
                 <span>
-                  {f.name} <span className="muted">{f.leased ? "· leased" : `· ${eur(f.monthly_cost)}/mo`}</span>
+                  {t(f.name)}{" "}
+                  <span className="muted">{f.leased ? `· ${t("leased")}` : `· ${t("{amount}/mo", { amount: eur(f.monthly_cost) })}`}</span>
                 </span>
                 <button disabled={disabled}
                   onClick={() => run("facility", { facility: f.key, op: f.leased ? "release" : "lease" })}>
-                  {f.leased ? "Close" : "Open free"}
+                  {f.leased ? t("Close") : t("Open free")}
                 </button>
               </div>
             ))}
-            <div className="muted">Free opening skips the fit-out; the monthly cost still applies.</div>
+            <div className="muted">{t("Free opening skips the fit-out; the monthly cost still applies.")}</div>
           </section>
 
           <section>
-            <h3>Rules</h3>
+            <h3>{t("Rules")}</h3>
             <label>
-              Difficulty from now on
+              {t("Difficulty from now on")}
               <div className="row">
                 <select value={level} onChange={(e) => setLevel(e.target.value)}>
                   {(cat?.difficulties ?? []).map((d) => (
                     <option key={d} value={d}>
-                      {d}
+                      {t(d)}
                     </option>
                   ))}
                 </select>
                 <button disabled={disabled} onClick={() => run("difficulty", { level })}>
-                  Apply
+                  {t("Apply")}
                 </button>
               </div>
             </label>

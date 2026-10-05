@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api/client";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
 import { monthLabel, shortDate } from "../util/format";
 import { useLive } from "../util/hooks";
@@ -21,12 +22,12 @@ export function History() {
     <div className="page">
       <div className="panel">
         <div className="panel-title">
-          <h2>Company history</h2>
+          <h2>{t("Company history")}</h2>
           <div className="speed-group">
             {[
-              [3, "Landmarks"],
-              [2, "Notable"],
-              [1, "Everything"],
+              [3, t("Landmarks")],
+              [2, t("Notable")],
+              [1, t("Everything")],
             ].map(([v, label]) => (
               <button key={v} className={minImp === v ? "active" : ""} onClick={() => setMinImp(v as number)}>
                 {label}
@@ -59,7 +60,7 @@ export function History() {
               ))}
             </div>
           ))}
-          {!groups.length && <div className="empty">History is still being written.</div>}
+          {!groups.length && <div className="empty">{t("History is still being written.")}</div>}
         </div>
       </div>
     </div>

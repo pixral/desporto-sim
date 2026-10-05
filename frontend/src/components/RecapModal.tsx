@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { api } from "../api/client";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
-import { eur, signedEur } from "../util/format";
+import { eur, fmtNum, signedEur } from "../util/format";
 import { useLive } from "../util/hooks";
 
 const ICON: Record<string, string> = {
@@ -47,13 +48,13 @@ export function RecapModal() {
   const change = r.value_end - r.value_start;
   return (
     <div className="modal-backdrop" onClick={() => setOpen(null)}>
-      <div className="end-card recap" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`Season ${r.season} awards`}>
+      <div className="end-card recap" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t("Season {n} awards", { n: r.season })}>
         <div className="muted" style={{ fontFamily: "var(--font-head)", fontSize: 12 }}>
-          SEASON {r.season}
+          {t("SEASON {n}", { n: r.season })}
         </div>
-        <h1>AWARDS NIGHT</h1>
+        <h1>{t("AWARDS NIGHT")}</h1>
         <div className="dim" style={{ marginBottom: 14 }}>
-          {state?.run.company_name}: company value {eur(r.value_start)} → {eur(r.value_end)} (
+          {state?.run.company_name}: {t("company value {start} → {end}", { start: eur(r.value_start), end: eur(r.value_end) })} (
           <span className={change >= 0 ? "pos" : "neg"}>{signedEur(change)}</span>)
         </div>
         <div className="awards">
@@ -63,7 +64,7 @@ export function RecapModal() {
                 {ICON[a.title] ?? "★"}
               </div>
               <div>
-                <div className="award-title">{a.title}</div>
+                <div className="award-title">{t(a.title)}</div>
                 <div className="award-name">{a.name}</div>
                 <div className="muted">{a.text}</div>
               </div>
@@ -71,13 +72,13 @@ export function RecapModal() {
           ))}
         </div>
         <div className="end-grid">
-          <span className="dim">Betting result</span>
+          <span className="dim">{t("Betting result")}</span>
           <span className="v">{signedEur(r.betting)}</span>
-          <span className="dim">Net result (after costs)</span>
+          <span className="dim">{t("Net result (after costs)")}</span>
           <span className="v">{signedEur(r.net)}</span>
-          <span className="dim">Bets settled</span>
-          <span className="v">{r.bets.toLocaleString()}</span>
-          <span className="dim">Hired / fired / left</span>
+          <span className="dim">{t("Bets settled")}</span>
+          <span className="v">{fmtNum(r.bets)}</span>
+          <span className="dim">{t("Hired / fired / left")}</span>
           <span className="v">
             {r.hires} / {r.fires} / {r.quits}
           </span>
@@ -89,10 +90,10 @@ export function RecapModal() {
               setTab("history");
             }}
           >
-            Read the history
+            {t("Read the history")}
           </button>
           <button className="primary" onClick={() => setOpen(null)}>
-            Back to work
+            {t("Back to work")}
           </button>
         </div>
       </div>

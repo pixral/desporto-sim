@@ -11,8 +11,11 @@ and salaries are simulated. The company can thrive, slowly decline, panic, recov
 ```
 
 First run creates the Python environment and builds the UI, then opens http://localhost:8000.
-After changing frontend code use `.\start.ps1 -Rebuild`. A company is founded on first start; afterwards the
-latest unfinished save is resumed. Press **space** to run/pause, **Esc** to close panels.
+After changing frontend code use `.\start.ps1 -Rebuild`. The game opens on the **title screen**: your company's
+building on a city street, by day and by night. It grows when the company does well and dims, empties or burns
+when it doesn't. From there: Continue (the latest save is loaded in the background), New game (you as CEO, or an
+AI CEO), Load game, and the language (**English / Español**). In the game, press **space** to run/pause and
+**Esc** to close panels; the top bar's **Menu** button goes back to the title screen (the game pauses).
 
 ## Development
 
@@ -58,6 +61,12 @@ else can be queued for the next monthly review. Don't get fired by the board, do
 - **Staff**, **LAB** (experiments, audits, strategies), **History** (timeline of landmarks),
   **CEO** (every review: thought, memo, actions done/rejected; as a player also your queue, applicants and
   "You" vs "Advisor acted"), **AI log** (every prompt and response), **Saves**.
+
+## Languages
+
+The interface is available in English and Spanish (chosen on the title screen, remembered per browser; the
+default follows the browser's language). Texts the simulation writes itself (history entries, the morning paper,
+AI thoughts and memos, decision results) are still in English.
 
 ## Using Claude instead of the mock brains
 

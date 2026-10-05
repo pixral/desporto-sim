@@ -131,3 +131,14 @@ def test_unknown_api_route_is_a_404_not_the_page(tmp_path):
     with TestClient(create_app(settings, autostart_run=False)) as client:
         assert client.get("/api/does-not-exist").status_code == 404
         assert "<title>app</title>" in client.get("/office/anything").text
+
+
+def test_startup_loads_the_latest_save_and_never_founds_a_company(tmp_path):
+    settings = Settings(database_url=f"sqlite:///{(tmp_path / 'test.db').as_posix()}", ai_provider="mock",
+                        frontend_dist=tmp_path / "no-dist")
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/api/state").status_code == 404  # the title screen offers "New game"
+        client.post("/api/runs", json={"company_name": "First FC", "seed": 3})
+        client.post("/api/runs", json={"company_name": "Second FC", "seed": 4})
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/api/state").json()["run"]["company_name"] == "Second FC"

@@ -2,6 +2,8 @@
 // The scene is rendered at native pixel scale into an offscreen canvas, then scaled up crisply.
 
 import type { EmployeeCard, StateView } from "../api/types";
+import { t } from "../i18n";
+import { eur } from "../util/format";
 import { ActorWorld, type Actor } from "./actors";
 import { BURST_MS, Drama, LINK_MS, SHOUT_MS } from "./drama";
 import {
@@ -75,6 +77,20 @@ const GLOW: Record<string, string> = {
   stressed: "#ff6b6b",
   researching: "#9ff0e6",
 };
+
+/** Plate name of an east-wing lot that is still for lease (layout.ts keeps the English ones). */
+function lotLabel(key: string, fallback: string): string {
+  switch (key) {
+    case "canteen":
+      return t("CANTEEN");
+    case "desk_wing":
+      return t("DESK WING");
+    case "studio":
+      return t("STUDIO");
+    default:
+      return fallback;
+  }
+}
 
 /** Ambient light target by simulated clock time. */
 function tintFor(time: string): [number, number, number, number] {
@@ -669,12 +685,12 @@ export class OfficeRenderer {
     };
     // fixed rooms on the back wall
     const roomPlates: [number, string, string][] = [
-      [4, "CEO OFFICE", "#5b2d3a"],
-      [12, "MEETING ROOM", "#33475c"],
-      [21, "LAB", "#0b6e77"],
-      [31, "THE BENCH", "#3f5c33"],
+      [4, t("CEO OFFICE"), "#5b2d3a"],
+      [12, t("MEETING ROOM"), "#33475c"],
+      [21, t("LAB"), "#0b6e77"],
+      [31, t("THE BENCH"), "#3f5c33"],
     ];
-    if (this.layout.leased.has("canteen")) roomPlates.push([41.5, "THE CANTEEN", "#8a3b2a"]);
+    if (this.layout.leased.has("canteen")) roomPlates.push([41.5, t("THE CANTEEN"), "#8a3b2a"]);
     for (const [u, label, col] of roomPlates) {
       const base = iso(u, 0);
       plate({ x: base.x, y: base.y - OUTER_WALL_H - 3 }, label, null, col);
@@ -686,11 +702,12 @@ export class OfficeRenderer {
         if (this.layout.leased.has(key)) continue;
         const base = iso(ANNEX_X + 5.5, (lot.y0 + lot.y1) / 2);
         const f = facilities.find((x) => x.key === key);
-        plate({ x: base.x, y: base.y }, "FOR LEASE", f ? `${f.name} · €${f.monthly_cost}/mo` : lot.label, "#3a3344", "#b6abc4");
+        const sub = f ? t("{name} · {cost}/mo", { name: t(f.name), cost: eur(f.monthly_cost) }) : lotLabel(key, lot.label);
+        plate({ x: base.x, y: base.y }, t("FOR LEASE"), sub, "#3a3344", "#b6abc4");
       }
       if (this.layout.leased.has("studio")) {
         const base = iso(ANNEX_X + 5.5, 18);
-        plate({ x: base.x, y: base.y - INNER_WALL_H - 4 }, "MEDIA STUDIO", "on air every morning", "#4b2d63", "#ff8ad8");
+        plate({ x: base.x, y: base.y - INNER_WALL_H - 4 }, t("MEDIA STUDIO"), t("on air every morning"), "#4b2d63", "#ff8ad8");
       }
     }
     // desk rooms
@@ -701,10 +718,10 @@ export class OfficeRenderer {
       const at = { x: base.x, y: base.y - INNER_WALL_H - 4 };
       if (dept) {
         const m = dept.month_profit;
-        const sub = `month ${m >= 0 ? "+" : "-"}€${Math.abs(m).toFixed(0)}`;
-        plate(at, dept.name.toUpperCase(), sub, shade(dept.color, -0.35), m >= 0 ? "#7cf0a0" : "#ff8a8a");
+        const sub = t("month {amount}", { amount: `${m >= 0 ? "+" : "-"}${eur(Math.abs(m))}` });
+        plate(at, t(dept.name).toUpperCase(), sub, shade(dept.color, -0.35), m >= 0 ? "#7cf0a0" : "#ff8a8a");
       } else {
-        plate(at, "EMPTY ROOM", "no desk yet", "#3a3344", "#b6abc4");
+        plate(at, t("EMPTY ROOM"), t("no desk yet"), "#3a3344", "#b6abc4");
       }
     });
     // speech bubbles for events

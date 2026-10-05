@@ -16,6 +16,10 @@ interface Store {
   setRecapOpen: (id: string | null) => void;
   godOpen: boolean;
   setGodOpen: (v: boolean) => void;
+  menuOpen: boolean;
+  setMenuOpen: (v: boolean) => void;
+  newRunMode: "player" | "ai";
+  setNewRunMode: (m: "player" | "ai") => void;
   briefingHiddenFor: string | null;
   setBriefingHidden: (id: string | null) => void;
   signoff: { scope: string; date: string; results: ActionResult[] } | null;
@@ -43,6 +47,10 @@ export const useStore = create<Store>((set) => ({
   setRecapOpen: (id) => set({ recapOpen: id }),
   godOpen: false,
   setGodOpen: (v) => set({ godOpen: v }),
+  menuOpen: true, // the game opens on the title screen
+  setMenuOpen: (v) => set({ menuOpen: v }),
+  newRunMode: "player",
+  setNewRunMode: (m) => set({ newRunMode: m }),
   briefingHiddenFor: null,
   setBriefingHidden: (id) => set({ briefingHiddenFor: id }),
   signoff: null,

@@ -67,6 +67,18 @@ Start with `.\start.ps1` (or the Browser pane while a Claude session is running)
       screen says "Fired by the board". On Easy it only warns.
 - [ ] Ironman: Sandbox is greyed out; loading an older save of that company is refused.
 
+## 9. Title screen and Spanish
+- [ ] Start the game: the title screen shows your latest company's building with traffic and people; day turns to
+      night in about two minutes (lights, lamps, headlights).
+- [ ] A new company (first month) is a small brick office; a company worth 1.25×, 1.8× and 3× its starting capital
+      gets more floors, then balconies, a roof garden, flags and a neon logo, then a glass tower with an antenna.
+- [ ] Leased spaces show: café tables (canteen), an east annex (desk wing), an "ON AIR" sign (studio).
+- [ ] A struggling company: blinds down, then papered windows, "FOR LEASE" and no awning. A bankrupt one: closed,
+      a floor on fire, a fire engine outside. Fired: "UNDER NEW MANAGEMENT". Retired: fireworks.
+- [ ] Continue / New game (You or an AI CEO) / Load game work; the top bar's Menu goes back and pauses.
+- [ ] Switch to Español: the menu, the top bar, panels, the briefing, the office legend and room plates are in
+      Spanish, amounts read "1.234 €" and dates "12 nov 2026". History entries, the paper and AI texts stay in English.
+
 ## What to report
 For anything odd: what you did, the in-game date, and a screenshot. The **History** and **AI log** views usually
 show why something happened.

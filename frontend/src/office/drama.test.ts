@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import type { StateView } from "../api/types";
+import { useLang } from "../i18n";
 import { Drama } from "./drama";
 
 const ev = (id: string, kind: string, who: string, title = "") =>
@@ -15,6 +16,8 @@ function state(events: unknown[], ticker: unknown[]): StateView {
 }
 
 describe("drama", () => {
+  beforeAll(() => useLang.setState({ lang: "en" })); // the shouts are checked in English, whatever the machine's locale
+
   it("does not replay old news on load, then reacts to new events", () => {
     const d = new Drama();
     d.ingest(state([ev("ev1", "fire", "e1")], []), 0);

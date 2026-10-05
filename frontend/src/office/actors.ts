@@ -1,6 +1,7 @@
 // Client-side "body" of each employee: where they should be (from their status) and how they get there.
 
 import type { EmployeeCard, StateView } from "../api/types";
+import { signedEur } from "../util/format";
 import type { Pt } from "./iso";
 import type { Face, Layout, Spot } from "./layout";
 import { findPath } from "./pathfind";
@@ -189,7 +190,7 @@ export class ActorWorld {
         if (emp.day_profit) {
           const pos = emp.day_profit > 0;
           a.floaters.push({
-            text: `${pos ? "+" : "-"}€${Math.abs(emp.day_profit).toFixed(2)}`,
+            text: signedEur(emp.day_profit, 2),
             color: pos ? "#7cf0a0" : "#ff7a7a",
             born: now,
             x: a.x,

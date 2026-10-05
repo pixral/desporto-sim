@@ -1,15 +1,52 @@
 import { api } from "../api/client";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
 import { eur, pct, shortDate, tone } from "../util/format";
 import { useLive } from "../util/hooks";
 
 const REC_PILL: Record<string, string> = { DEPLOY: "won", PROMISING: "open", REJECT: "lost" };
 
+const REC_LABEL: Record<string, string> = {
+  get DEPLOY() {
+    return t("DEPLOY");
+  },
+  get PROMISING() {
+    return t("PROMISING");
+  },
+  get REJECT() {
+    return t("REJECT");
+  },
+};
+
+const EXPERIMENT_STATUS: Record<string, string> = {
+  get completed() {
+    return t("completed");
+  },
+  get rejected() {
+    return t("rejected");
+  },
+  get shelved() {
+    return t("shelved");
+  },
+};
+
+const ORIGIN_LABEL: Record<string, string> = {
+  get default() {
+    return t("default");
+  },
+  get lab() {
+    return t("lab");
+  },
+  get hire() {
+    return t("hire");
+  },
+};
+
 export function Lab() {
   const state = useStore((s) => s.state);
   const select = useStore((s) => s.selectEmployee);
   const { data } = useLive(() => api.lab(), state?.clock.day_index);
-  if (!data) return <div className="page empty">Loading the LAB…</div>;
+  if (!data) return <div className="page empty">{t("Loading the LAB…")}</div>;
   const running = data.experiments.filter((x) => x.status === "running");
   const done = data.experiments.filter((x) => x.status !== "running");
   return (
@@ -17,58 +54,61 @@ export function Lab() {
       <div className="grid-2">
         <div className="panel">
           <div className="panel-title">
-            <h2>Research team</h2>
-            <span className="muted">budget {eur(data.budget)}/month</span>
+            <h2>{t("Research team")}</h2>
+            <span className="muted">{t("budget {amount}/month", { amount: eur(data.budget) })}</span>
           </div>
           {data.researchers.map((r) => (
             <div key={r.id} className="panel-title" style={{ cursor: "pointer" }} onClick={() => select(r.id)}>
               <span>
-                <b>{r.name}</b> <span className="muted">· {r.specialty_label}</span>
+                <b>{r.name}</b> <span className="muted">· {t(r.specialty_label)}</span>
               </span>
               <span className="dim">{r.task}</span>
             </div>
           ))}
-          {!data.researchers.length && <div className="empty">The LAB is empty. The CEO can hire researchers.</div>}
-          <h3 style={{ marginTop: 14 }}>Running experiments</h3>
+          {!data.researchers.length && <div className="empty">{t("The LAB is empty. The CEO can hire researchers.")}</div>}
+          <h3 style={{ marginTop: 14 }}>{t("Running experiments")}</h3>
           {running.map((x) => (
             <div key={x.id} style={{ margin: "8px 0" }}>
-              <b>{x.name}</b> <span className="muted">· {x.researcher} · due {shortDate(x.due)}</span>
+              <b>{x.name}</b>{" "}
+              <span className="muted">· {t("{researcher} · due {date}", { researcher: x.researcher, date: shortDate(x.due) })}</span>
               <div className="dim">{x.hypothesis}</div>
             </div>
           ))}
-          {!running.length && <div className="muted">Nothing running.</div>}
+          {!running.length && <div className="muted">{t("Nothing running.")}</div>}
         </div>
         <div className="panel">
-          <h2 style={{ marginBottom: 10 }}>Audit findings</h2>
+          <h2 style={{ marginBottom: 10 }}>{t("Audit findings")}</h2>
           {data.audit.map((a) => (
             <div key={a.id} style={{ margin: "6px 0" }} className={a.resolved ? "muted" : ""}>
-              <span className="muted">{shortDate(a.day)}</span> {a.text} {a.resolved && "(fixed)"}
+              <span className="muted">{shortDate(a.day)}</span> {a.text} {a.resolved && t("(fixed)")}
             </div>
           ))}
-          {!data.audit.length && <div className="muted">No weak spots flagged yet. Audits run at each month close.</div>}
+          {!data.audit.length && <div className="muted">{t("No weak spots flagged yet. Audits run at each month close.")}</div>}
         </div>
       </div>
       <div className="panel" style={{ marginTop: 16 }}>
-        <h2 style={{ marginBottom: 4 }}>Experiments</h2>
+        <h2 style={{ marginBottom: 4 }}>{t("Experiments")}</h2>
         <div className="muted" style={{ marginBottom: 10 }}>
-          Each idea is backtested on the past year minus the last 4 months, then checked on those 4 months (holdout).
-          Only ideas that also make money on the holdout are recommended for deployment.
+          {t("Each idea is backtested on the past year minus the last 4 months, then checked on those 4 months (holdout).")}{" "}
+          {t("Only ideas that also make money on the holdout are recommended for deployment.")}
         </div>
         {!done.length ? (
-          <div className="empty">No completed experiments yet.</div>
+          <div className="empty">{t("No completed experiments yet.")}</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table className="tab-nums">
               <thead>
                 <tr>
-                  <th>Finished</th>
-                  <th>Strategy</th>
-                  <th className="r">Bets</th>
+                  <th>{t("Finished")}</th>
+                  <th>{t("Strategy")}</th>
+                  <th className="r">{t("Bets")}</th>
                   <th className="r">ROI</th>
-                  <th className="r">Win rate</th>
-                  <th className="r" title="Most recent 4 months, kept out of the main test">Holdout</th>
-                  <th>Verdict</th>
-                  <th>Status</th>
+                  <th className="r">{t("Win rate")}</th>
+                  <th className="r" title={t("Most recent 4 months, kept out of the main test")}>
+                    {t("Holdout")}
+                  </th>
+                  <th>{t("Verdict")}</th>
+                  <th>{t("Status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -76,7 +116,7 @@ export function Lab() {
                   <tr key={x.id} title={x.rationale}>
                     <td className="muted">{x.completed ? shortDate(x.completed) : "—"}</td>
                     <td>
-                      <b>{x.name}</b> <span className="muted">by {x.researcher}</span>
+                      <b>{x.name}</b> <span className="muted">{t("by {name}", { name: x.researcher })}</span>
                       <div className="dim">{x.hypothesis}</div>
                     </td>
                     <td className="r">{x.result?.sample_size ?? "—"}</td>
@@ -86,9 +126,15 @@ export function Lab() {
                       {x.holdout ? `${pct(x.holdout.roi, 1, true)} (${x.holdout.sample_size})` : "—"}
                     </td>
                     <td>
-                      <span className={`pill ${REC_PILL[x.recommendation] ?? "void"}`}>{x.recommendation || "—"}</span>
+                      <span className={`pill ${REC_PILL[x.recommendation] ?? "void"}`}>
+                        {(REC_LABEL[x.recommendation] ?? x.recommendation) || "—"}
+                      </span>
                     </td>
-                    <td>{x.status === "deployed" ? `live: ${x.deployed_names.join(", ")}` : x.status}</td>
+                    <td>
+                      {x.status === "deployed"
+                        ? t("live: {names}", { names: x.deployed_names.join(", ") })
+                        : (EXPERIMENT_STATUS[x.status] ?? x.status)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -97,25 +143,25 @@ export function Lab() {
         )}
       </div>
       <div className="panel" style={{ marginTop: 16 }}>
-        <h2 style={{ marginBottom: 10 }}>Strategies in use</h2>
+        <h2 style={{ marginBottom: 10 }}>{t("Strategies in use")}</h2>
         <table className="tab-nums">
           <thead>
             <tr>
-              <th>Strategy</th>
-              <th>Used by</th>
-              <th className="r">Live bets</th>
-              <th className="r">Live ROI</th>
-              <th className="r">Backtest ROI</th>
+              <th>{t("Strategy")}</th>
+              <th>{t("Used by")}</th>
+              <th className="r">{t("Live bets")}</th>
+              <th className="r">{t("Live ROI")}</th>
+              <th className="r">{t("Backtest ROI")}</th>
             </tr>
           </thead>
           <tbody>
             {data.strategies.map((s) => (
               <tr key={s.id} className={s.users.length ? "" : "inactive"}>
                 <td>
-                  <b>{s.name}</b> <span className="muted">({s.origin})</span>
+                  <b>{s.name}</b> <span className="muted">({ORIGIN_LABEL[s.origin] ?? s.origin})</span>
                   <div className="dim">{s.summary}</div>
                 </td>
-                <td>{s.users.join(", ") || "retired"}</td>
+                <td>{s.users.join(", ") || t("retired")}</td>
                 <td className="r">{s.live_bets}</td>
                 <td className={`r ${tone(s.live_roi)}`}>{pct(s.live_roi, 1, true)}</td>
                 <td className="r">{s.backtest_roi !== null ? `${pct(s.backtest_roi, 1, true)} (${s.backtest_n})` : "—"}</td>

@@ -1,4 +1,5 @@
 import type { CeoAction, ReviewView } from "../api/types";
+import { t } from "../i18n";
 import { eur, pct } from "./format";
 
 /** Looks up display names for the ids inside an action. */
@@ -15,8 +16,9 @@ export interface Namer {
   marketing: number | null;
 }
 
+/** Desk, kind and facility names stay in English here (as the server sends them); describe() translates them. */
 export function reviewNamer(r: ReviewView): Namer {
-  const by = <T extends { id: string; name: string }>(rows: T[]) => (id?: string) => rows.find((x) => x.id === id)?.name ?? "someone";
+  const by = <T extends { id: string; name: string }>(rows: T[]) => (id?: string) => rows.find((x) => x.id === id)?.name ?? t("someone");
   return {
     emp: by(r.people),
     desk: (id) => r.desks.find((d) => d.id === id)?.name ?? (id && id === r.lab.department_id ? "LAB" : "a desk"),
@@ -30,95 +32,139 @@ export function reviewNamer(r: ReviewView): Namer {
   };
 }
 
+/** "the Germany Desk" / "the LAB" (Spanish needs the article to agree). `name` is the English desk name. */
+export function theDesk(name: string): string {
+  return name === "LAB" ? t("the LAB") : t("the {desk}", { desk: t(name) });
+}
+
+/** "the Canteen": `name` is the English facility name without its leading "The" (see "Canteen|facility" in i18n/es/people.ts). */
+function theFacility(name: string): string {
+  return t("the {facility}", { facility: t(`${name}|facility`) });
+}
+
 /** Same wording as the backend's `player.describe`, so edited decisions read like the advisor's. */
 export function describe(a: CeoAction, n: Namer): string {
   const who = n.emp(a.employee_id);
-  const desk = n.desk(a.department_id);
-  const amount = a.amount ?? 0;
+  const deskName = n.desk(a.department_id);
+  const desk = theDesk(deskName);
+  const amount = eur(a.amount ?? 0);
   switch (a.type) {
     case "FIRE":
-      return `Fire ${who}`;
+      return t("Fire {who}", { who });
     case "HIRE":
-      return `Hire ${n.cand(a.candidate_id)} into the ${desk}`;
+      return t("Hire {name} into {desk}", { name: n.cand(a.candidate_id), desk });
     case "PROMOTE":
-      return `Promote ${who}`;
+      return t("Promote {who}", { who });
     case "WARN":
-      return `Warn ${who}`;
+      return t("Warn {who}", { who });
     case "CLEAR_REVIEW":
-      return `Lift ${who}'s review`;
+      return t("Lift {who}'s review", { who });
     case "TRANSFER_EMPLOYEE":
-      return `Move ${who} to the ${desk}`;
+      return t("Move {who} to {desk}", { who, desk });
     case "GIVE_TIME_OFF":
-      return `Give ${who} ${a.value ?? 3} day(s) off`;
+      return t("Give {who} {n} day(s) off", { who, n: a.value ?? 3 });
     case "TALK":
-      return `Talk with ${who}`;
+      return t("Talk with {who}", { who });
     case "TEAM_EVENT":
-      return "Team night out";
+      return t("Team night out");
     case "SET_STAKE_LIMIT": {
       const now = n.stake(a.department_id);
-      return `${desk}: max stake ${now === null ? "" : `${pct(now)} → `}${pct(a.pct ?? 0)} of bankroll`;
+      const params = { desk: t(deskName), new: pct(a.pct ?? 0) };
+      return now === null
+        ? t("{desk}: max stake {new} of bankroll", params)
+        : t("{desk}: max stake {old} → {new} of bankroll", { ...params, old: pct(now) });
     }
     case "FUND_DEPARTMENT":
-      return `Move ${eur(amount)} into the ${desk}`;
+      return t("Move {amount} into {desk}", { amount, desk });
     case "WITHDRAW_BANKROLL":
-      return `Withdraw ${eur(amount)} from the ${desk}`;
+      return t("Withdraw {amount} from {desk}", { amount, desk });
     case "CREATE_DEPARTMENT":
-      return `Open the ${n.kind(a.department_kind)} with ${eur(amount)}`;
+      return t("Open {desk} with {amount}", { desk: theDesk(n.kind(a.department_kind)), amount });
     case "CLOSE_DEPARTMENT":
-      return `Close the ${desk}`;
+      return t("Close {desk}", { desk });
     case "SET_LAB_BUDGET":
-      return `LAB budget ${n.labBudget === null ? "" : `${eur(n.labBudget)} → `}${eur(amount)}/month`;
+      return n.labBudget === null
+        ? t("LAB budget {new}/month", { new: amount })
+        : t("LAB budget {old} → {new}/month", { old: eur(n.labBudget), new: amount });
     case "SET_MARKETING_BUDGET":
-      return `Marketing ${n.marketing === null ? "" : `${eur(n.marketing)} → `}${eur(amount)}/month`;
+      return n.marketing === null
+        ? t("Marketing {new}/month", { new: amount })
+        : t("Marketing {old} → {new}/month", { old: eur(n.marketing), new: amount });
     case "DEPLOY_STRATEGY":
-      return `Roll out '${n.exp(a.experiment_id)}' to ${who}`;
+      return t("Roll out '{strategy}' to {who}", { strategy: n.exp(a.experiment_id), who });
     case "ADJUST_STRATEGY":
-      return `${who}: set ${a.field} to ${a.value}`;
+      return t("{who}: set {field} to {value}", { who, field: String(a.field), value: String(a.value) });
     case "FREEZE_HIRING":
-      return "Freeze hiring";
+      return t("Freeze hiring");
     case "UNFREEZE_HIRING":
-      return "Lift the hiring freeze";
+      return t("Lift the hiring freeze");
     case "CUT_SALARIES":
-      return `Cut every salary by ${pct(a.pct ?? 0.1, 0)}`;
+      return t("Cut every salary by {pct}", { pct: pct(a.pct ?? 0.1, 0) });
     case "TAKE_LOAN":
-      return `Borrow ${eur(amount)}`;
+      return t("Borrow {amount}", { amount });
     case "REPAY_LOAN":
-      return `Repay ${eur(amount)} of debt`;
+      return t("Repay {amount} of debt", { amount });
     case "SET_LAB_BRIEF":
-      return `LAB brief: ${briefText(a, n)}`;
+      return t("LAB brief: {brief}", { brief: briefText(a, n) });
     case "TEST_CANDIDATE":
-      return `LAB: test ${n.cand(a.candidate_id)}'s method`;
+      return t("LAB: test {name}'s method", { name: n.cand(a.candidate_id) });
     case "SHELVE_STRATEGY":
-      return `Shelve '${n.exp(a.experiment_id)}'`;
+      return t("Shelve '{strategy}'", { strategy: n.exp(a.experiment_id) });
     case "LEASE_SPACE":
-      return `Lease the ${n.facility(a.facility)}`;
+      return t("Lease {facility}", { facility: theFacility(n.facility(a.facility)) });
     case "RELEASE_SPACE":
-      return `Give up the ${n.facility(a.facility)}`;
+      return t("Give up {facility}", { facility: theFacility(n.facility(a.facility)) });
   }
 }
 
+/** Competition names by code (getters, so they follow the current language). */
 export const COMP_NAMES: Record<string, string> = {
-  BL1: "Bundesliga",
-  PL: "Premier League",
-  LL: "La Liga",
-  SA: "Serie A",
-  UCL: "Champions League",
+  get BL1() {
+    return t("Bundesliga");
+  },
+  get PL() {
+    return t("Premier League");
+  },
+  get LL() {
+    return t("La Liga");
+  },
+  get SA() {
+    return t("Serie A");
+  },
+  get UCL() {
+    return t("Champions League");
+  },
 };
 export const BRIEF_MARKETS: Record<string, string> = {
-  home_win: "home wins",
-  draw: "draws",
-  away_win: "away wins",
-  over_2_5: "over 2.5 goals",
-  under_2_5: "under 2.5 goals",
+  get home_win() {
+    return t("home wins");
+  },
+  get draw() {
+    return t("draws");
+  },
+  get away_win() {
+    return t("away wins");
+  },
+  get over_2_5() {
+    return t("over 2.5 goals");
+  },
+  get under_2_5() {
+    return t("under 2.5 goals");
+  },
 };
+
+/** What a research brief points the LAB at. `deskName` is the English name of the desk (for "desk" briefs). */
+export function briefLabel(kind: string, value: string, deskName: string): string {
+  if (kind === "competition") return COMP_NAMES[value] ?? value;
+  if (kind === "market") return BRIEF_MARKETS[value] ?? value;
+  if (kind === "underdogs") return t("underdogs at longer odds");
+  if (kind === "desk") return t("ideas for {desk}", { desk: theDesk(deskName) });
+  return t("researchers' own ideas");
+}
 
 function briefText(a: CeoAction, n: Namer): string {
   const [kind, value] = (a.field ?? "").split(":");
-  if (kind === "competition") return COMP_NAMES[value] ?? value;
-  if (kind === "market") return BRIEF_MARKETS[value] ?? value;
-  if (kind === "underdogs") return "underdogs at longer odds";
-  if (kind === "desk") return `ideas for the ${n.desk(a.department_id)}`;
-  return "researchers' own ideas";
+  return briefLabel(kind, value, kind === "desk" ? n.desk(a.department_id) : "");
 }
 
 const KEYS = ["employee_id", "candidate_id", "department_id", "experiment_id", "facility", "department_kind"] as const;
@@ -166,11 +212,22 @@ export function editableField(a: CeoAction): { key: "amount" | "pct" | "value"; 
   }
 }
 
+/** Proposal areas (getters, so they follow the current language). */
 export const AREA_LABEL: Record<string, string> = {
-  people: "People",
-  hiring: "Hiring",
-  desks: "Desks",
-  money: "Money",
+  get people() {
+    return t("People");
+  },
+  get hiring() {
+    return t("Hiring");
+  },
+  get desks() {
+    return t("Desks");
+  },
+  get money() {
+    return t("Money");
+  },
   lab: "LAB",
-  office: "Office",
+  get office() {
+    return t("Office");
+  },
 };

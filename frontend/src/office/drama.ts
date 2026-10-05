@@ -1,6 +1,8 @@
 // Turns simulation events into visible office moments: speech bubbles, influence lines, confetti.
 
 import type { HistoryEvent, StateView } from "../api/types";
+import { t } from "../i18n";
+import { eur } from "../util/format";
 
 export interface Shout {
   actorId: string;
@@ -34,62 +36,62 @@ const NEUTRAL = "#3d3054";
 function shoutFor(e: HistoryEvent): { text: string; color: string } | null {
   switch (e.kind) {
     case "fire":
-      return { text: "Fired…", color: BAD };
+      return { text: t("Fired…"), color: BAD };
     case "hire":
-      return { text: "First day!", color: GOOD };
+      return { text: t("First day!"), color: GOOD };
     case "promotion":
-      return { text: "Promoted!", color: GOOD };
+      return { text: t("Promoted!"), color: GOOD };
     case "warning":
-      return { text: "Under review…", color: BAD };
+      return { text: t("Under review…"), color: BAD };
     case "resignation":
-      return { text: "I quit.", color: DRAMA };
+      return { text: t("I quit."), color: DRAMA };
     case "refusal":
-      return { text: "Not using that.", color: DRAMA };
+      return { text: t("Not using that."), color: DRAMA };
     case "big_swing":
-      return { text: "All in!", color: DRAMA };
+      return { text: t("All in!"), color: DRAMA };
     case "strategy_deployed":
-      return { text: "New strategy!", color: NEUTRAL };
+      return { text: t("New strategy!"), color: NEUTRAL };
     case "transfer":
-      return { text: "New desk!", color: NEUTRAL };
+      return { text: t("New desk!"), color: NEUTRAL };
     case "memo":
-      return { text: "Memo for everyone!", color: NEUTRAL };
+      return { text: t("Memo for everyone!"), color: NEUTRAL };
     case "poach_offer":
-      return { text: "A rival wants me…", color: DRAMA };
+      return { text: t("A rival wants me…"), color: DRAMA };
     case "counter_offer":
-      return { text: "Raise to stay!", color: GOOD };
+      return { text: t("Raise to stay!"), color: GOOD };
     case "poached":
-      return { text: `Off to ${String(e.data.rival ?? "a rival")}!`, color: BAD };
+      return { text: e.data.rival != null ? t("Off to {rival}!", { rival: String(e.data.rival) }) : t("Off to a rival!"), color: BAD };
     case "loyal":
-      return { text: "Staying loyal.", color: GOOD };
+      return { text: t("Staying loyal."), color: GOOD };
     case "raise_demand":
-      return { text: "I deserve more.", color: DRAMA };
+      return { text: t("I deserve more."), color: DRAMA };
     case "raise_granted":
-      return { text: "Raise!", color: GOOD };
+      return { text: t("Raise!"), color: GOOD };
     case "raise_refused":
-      return { text: "Unbelievable…", color: BAD };
+      return { text: t("Unbelievable…"), color: BAD };
     case "tilt":
-      return { text: "I'll win it back!", color: DRAMA };
+      return { text: t("I'll win it back!"), color: DRAMA };
     case "lost_nerve":
-      return { text: "I can't pick…", color: BAD };
+      return { text: t("I can't pick…"), color: BAD };
     case "found_nerve":
-      return { text: "Back in the game.", color: GOOD };
+      return { text: t("Back in the game."), color: GOOD };
     case "back_at_work":
-      return { text: "I'm back.", color: NEUTRAL };
+      return { text: t("I'm back."), color: NEUTRAL };
     case "team_event":
-      return { text: "Team night!", color: GOOD };
+      return { text: t("Team night!"), color: GOOD };
     case "book_limit":
-      return { text: `${String(e.data.book ?? "They")} limited us!`, color: BAD };
+      return { text: e.data.book != null ? t("{book} limited us!", { book: String(e.data.book) }) : t("They limited us!"), color: BAD };
     case "book_limit_lifted":
-      return { text: "Limits back up!", color: GOOD };
+      return { text: t("Limits back up!"), color: GOOD };
     case "board_fires_ceo":
-      return { text: "…the board?!", color: BAD };
+      return { text: t("…the board?!"), color: BAD };
     case "new_ceo":
-      return { text: "A new era!", color: DRAMA };
+      return { text: t("A new era!"), color: DRAMA };
     case "season_awards":
-      return { text: "MVP!", color: GOOD };
+      return { text: t("MVP!"), color: GOOD };
     case "big_win": {
       const m = e.title.match(/\(\+€([\d,]+)\)/);
-      return { text: m ? `+€${m[1]}!` : "Winner!", color: GOOD };
+      return { text: m ? t("+{amount}!", { amount: eur(Number(m[1].replace(/,/g, ""))) }) : t("Winner!"), color: GOOD };
     }
     default:
       return null;

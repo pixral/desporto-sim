@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api/client";
 import type { CandidatesView, ReviewCandidate } from "../api/types";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
 import { eur, pct, shortDate, tone } from "../util/format";
 import { useLive } from "../util/hooks";
@@ -14,16 +15,18 @@ export function HiringPanel() {
   return (
     <div className="panel">
       <div className="panel-title">
-        <h3>Applicants</h3>
+        <h3>{t("Applicants")}</h3>
         <span className="muted">
-          LAB slots {lab.free_slots} free of {lab.slots} · hiring happens at the monthly review{data.hiring_frozen ? " · hiring is frozen" : ""}
+          {t("LAB slots {free} free of {slots} · hiring happens at the monthly review", { free: lab.free_slots, slots: lab.slots })}
+          {data.hiring_frozen ? ` · ${t("hiring is frozen")}` : ""}
         </span>
       </div>
       <div className="dim" style={{ marginBottom: 8 }}>
-        A CV says little about skill. Ask the LAB to backtest an applicant's method (it takes a LAB slot until Monday), then queue the
-        hire for the 1st.
+        {t(
+          "A CV says little about skill. Ask the LAB to backtest an applicant's method (it takes a LAB slot until Monday), then queue the hire for the 1st.",
+        )}
       </div>
-      {data.candidates.length === 0 && <div className="empty">No applicants right now.</div>}
+      {data.candidates.length === 0 && <div className="empty">{t("No applicants right now.")}</div>}
       <div className="cand-grid">
         {data.candidates.map((c) => (
           <Applicant key={c.id} c={c} data={data} onDone={reload} />
@@ -64,21 +67,22 @@ function Applicant({ c, data, onDone }: { c: ReviewCandidate; data: CandidatesVi
     <div className="cand">
       <div className="row-between">
         <b>{c.name}</b>
-        <span className="muted">{eur(c.salary_ask)}/mo</span>
+        <span className="muted">{t("{amount}/mo", { amount: eur(c.salary_ask) })}</span>
       </div>
       <div className="dim">
-        {researcher ? "Researcher" : "Tipster"} · {c.specialty_label} · {c.experience}y · in the pool until {shortDate(c.expires)}
+        {researcher ? t("Researcher") : t("Tipster")} · {t(c.specialty_label)} · {t("{n}y", { n: c.experience })} ·{" "}
+        {t("in the pool until {date}", { date: shortDate(c.expires) })}
       </div>
       <div className="evidence">
-        <span title="How good the CV looks. Not proof of skill.">CV {c.cv_rating}/100</span>
+        <span title={t("How good the CV looks. Not proof of skill.")}>CV {c.cv_rating}/100</span>
         {tested ? (
           <span>
-            LAB test <b className={tone(c.lab_backtest_roi)}>{pct(c.lab_backtest_roi, 1, true)}</b> over {c.lab_backtest_n} bets
+            {t("LAB test")} <b className={tone(c.lab_backtest_roi)}>{pct(c.lab_backtest_roi, 1, true)}</b> {t("over {n} bets", { n: c.lab_backtest_n ?? 0 })}
           </span>
         ) : c.test_due ? (
-          <span className="muted">LAB test running · results {shortDate(c.test_due)}</span>
+          <span className="muted">{t("LAB test running · results {date}", { date: shortDate(c.test_due) })}</span>
         ) : (
-          <span className="muted">{researcher ? "Researchers aren't backtested" : "Not tested"}</span>
+          <span className="muted">{researcher ? t("Researchers aren't backtested") : t("Not tested")}</span>
         )}
       </div>
       <div className="muted">{c.traits_text}</div>
@@ -87,24 +91,23 @@ function Applicant({ c, data, onDone }: { c: ReviewCandidate; data: CandidatesVi
         {canTest && (
           <button
             disabled={busy || data.lab.free_slots <= 0}
-            title={data.lab.free_slots <= 0 ? "Every LAB slot is busy" : "Results next Monday"}
+            title={data.lab.free_slots <= 0 ? t("Every LAB slot is busy") : t("Results next Monday")}
             onClick={() =>
               run(async () => {
                 const r = await api.act({ type: "TEST_CANDIDATE", candidate_id: c.id });
-                return r.applied ? r.result : `Refused: ${r.result}`;
+                return r.applied ? r.result : t("Refused: {reason}", { reason: r.result });
               })
             }
           >
-            Test
+            {t("Test")}
           </button>
         )}
         {targets.length > 0 && !queued && (
           <>
-            <select value={to} onChange={(e) => setTo(e.target.value)} aria-label="Hire into">
-              {targets.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                  {t.fit ? " (fits)" : ""}
+            <select value={to} onChange={(e) => setTo(e.target.value)} aria-label={t("Hire into")}>
+              {targets.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.fit ? t("{desk} (fits)", { desk: t(x.name) }) : t(x.name)}
                 </option>
               ))}
             </select>
@@ -114,16 +117,16 @@ function Applicant({ c, data, onDone }: { c: ReviewCandidate; data: CandidatesVi
               onClick={() =>
                 run(async () => {
                   const p = await api.queue({ type: "HIRE", candidate_id: c.id, department_id: to });
-                  return `Queued for the monthly review: ${p.label}`;
+                  return t("Queued for the monthly review: {label}", { label: p.label });
                 })
               }
             >
-              Queue hire
+              {t("Queue hire")}
             </button>
           </>
         )}
-        {queued && <span className="chip src-queue">hire queued</span>}
-        {targets.length === 0 && <span className="muted">No free seat for them.</span>}
+        {queued && <span className="chip src-queue">{t("hire queued")}</span>}
+        {targets.length === 0 && <span className="muted">{t("No free seat for them.")}</span>}
       </div>
     </div>
   );
