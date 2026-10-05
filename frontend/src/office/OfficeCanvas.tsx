@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmployeeCard } from "../api/types";
+import { t } from "../i18n";
 import { latestState, useStore } from "../state/store";
 import { pct } from "../util/format";
 import { OfficeRenderer } from "./renderer";
@@ -8,6 +9,11 @@ interface Hover {
   emp: EmployeeCard;
   x: number;
   y: number;
+}
+
+/** A translated sentence whose {slots} are filled with bold symbols. */
+function withBold(text: string, marks: Record<string, string>): React.ReactNode[] {
+  return text.split(/\{(\w+)\}/).map((part, i) => (i % 2 ? <b key={i}>{marks[part] ?? part}</b> : part));
 }
 
 export function OfficeCanvas() {
@@ -147,45 +153,54 @@ export function OfficeCanvas() {
           if (rendererRef.current) rendererRef.current.hoveredId = null;
         }}
         onWheel={onWheel}
-        aria-label="The office. Click a person or a desk for details."
+        aria-label={t("The office. Click a person or a desk for details.")}
       />
       {hover && (
         <div className="tooltip" style={{ left: Math.min(hover.x + 16, (wrapRef.current?.clientWidth ?? 800) - 290), top: hover.y + 16 }}>
           <div className="name">{hover.emp.name}</div>
           <div className="dim">
-            {hover.emp.title} · {hover.emp.specialty_label}
+            {t(hover.emp.title)} · {t(hover.emp.specialty_label)}
           </div>
           <div style={{ marginTop: 4 }}>{hover.emp.task || hover.emp.status}</div>
           {hover.emp.thought && <div className="thought">“{hover.emp.thought}”</div>}
           {hover.emp.role !== "ceo" && (
             <div className="muted" style={{ marginTop: 4 }}>
-              mood {hover.emp.mood} · stress {pct(hover.emp.stress, 0)} · rep {hover.emp.reputation.toFixed(0)}
-              {hover.emp.under_review ? " · UNDER REVIEW" : ""}
+              {t("mood {mood} · stress {stress} · rep {rep}", {
+                mood: t(hover.emp.mood),
+                stress: pct(hover.emp.stress, 0),
+                rep: hover.emp.reputation.toFixed(0),
+              })}
+              {hover.emp.under_review ? ` · ${t("UNDER REVIEW")}` : ""}
             </div>
           )}
         </div>
       )}
       {legend && (
         <div className="office-legend">
-          Drag to pan · scroll to zoom · click a person or a desk. Bubbles: <b>?</b> analyzing, <b>€</b> bet placed, ball
-          watching, bulb researching, cloud frustrated, red <b>!!</b> stressed, orange <b>!</b> under review. Yellow dotted
-          line: someone followed a colleague's call.
+          {t("Drag to pan · scroll to zoom · click a person or a desk.")}{" "}
+          {withBold(
+            t(
+              "Bubbles: {q} analyzing, {eur} bet placed, ball watching, bulb researching, cloud frustrated, red {alarm} stressed, orange {warn} under review.",
+            ),
+            { q: "?", eur: "€", alarm: "!!", warn: "!" },
+          )}{" "}
+          {t("Yellow dotted line: someone followed a colleague's call.")}
         </div>
       )}
       <div className="office-tools">
-        <button onClick={toggleLegend} className={legend ? "active" : ""} aria-label="Show legend">
+        <button onClick={toggleLegend} className={legend ? "active" : ""} aria-label={t("Show legend")}>
           ?
         </button>
         <button onClick={() => setNames((v) => !v)} className={names ? "active" : ""}>
-          Names
+          {t("Names")}
         </button>
-        <button onClick={() => zoom(0.8)} aria-label="Zoom out">
+        <button onClick={() => zoom(0.8)} aria-label={t("Zoom out")}>
           −
         </button>
-        <button onClick={() => zoom(1.25)} aria-label="Zoom in">
+        <button onClick={() => zoom(1.25)} aria-label={t("Zoom in")}>
           +
         </button>
-        <button onClick={() => rendererRef.current?.fit()}>Fit</button>
+        <button onClick={() => rendererRef.current?.fit()}>{t("Fit")}</button>
       </div>
     </div>
   );

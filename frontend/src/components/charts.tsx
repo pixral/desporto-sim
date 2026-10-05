@@ -2,6 +2,7 @@
 // crosshair/per-mark tooltips, legend for >= 2 series, text in ink tokens (never series colour).
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { t } from "../i18n";
 
 function useWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
   const ref = useRef<T>(null);
@@ -157,7 +158,7 @@ export function ColumnChart({ data, height = 220, format }: { data: Column[]; he
   const every = Math.ceil(data.length / 8);
   return (
     <div className="chart" ref={ref}>
-      <svg height={height} role="img" aria-label="Signed columns">
+      <svg height={height} role="img" aria-label={t("Signed columns")}>
         {ticks.map((t) => (
           <g key={t}>
             <line x1={m.l} x2={width - m.r} y1={sy(t)} y2={sy(t)} stroke={t === 0 ? "var(--axis)" : "var(--grid)"} strokeWidth={1} />

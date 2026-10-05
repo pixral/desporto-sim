@@ -2,8 +2,9 @@ import { useState } from "react";
 import { api } from "../api/client";
 import type { AiCallFull } from "../api/types";
 import { PromptModal } from "../components/EmployeePanel";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
-import { shortDate } from "../util/format";
+import { eur, fmtNum, shortDate } from "../util/format";
 import { useLive } from "../util/hooks";
 
 export function AiLog() {
@@ -20,52 +21,52 @@ export function AiLog() {
     <div className="page">
       <div className="panel">
         <div className="panel-title">
-          <h2>AI calls</h2>
-          <span className="muted">provider: {state?.run.ai_provider}</span>
+          <h2>{t("AI calls")}</h2>
+          <span className="muted">{t("provider: {name}", { name: state?.run.ai_provider ?? "" })}</span>
         </div>
         {k && (
           <div className="stats" style={{ marginBottom: 12 }}>
             <div className="stat">
-              <div className="label">Calls</div>
-              <div className="value">{k.ai_calls.toLocaleString()}</div>
+              <div className="label">{t("Calls")}</div>
+              <div className="value">{fmtNum(k.ai_calls)}</div>
             </div>
             <div className="stat">
-              <div className="label">Failures</div>
+              <div className="label">{t("Failures")}</div>
               <div className="value">{k.ai_failures}</div>
             </div>
             <div className="stat">
-              <div className="label">Total cost</div>
-              <div className="value">${k.ai_cost_usd.toFixed(3)}</div>
+              <div className="label">{t("Total cost")}</div>
+              <div className="value">${fmtNum(k.ai_cost_usd, 3)}</div>
             </div>
             <div className="stat">
-              <div className="label">This month (charged)</div>
-              <div className="value">€{k.ai_cost_month_eur.toFixed(2)}</div>
+              <div className="label">{t("This month (charged)")}</div>
+              <div className="value">{eur(k.ai_cost_month_eur, 2)}</div>
             </div>
           </div>
         )}
         <div className="controls" style={{ marginBottom: 10 }}>
-          <select value={purpose} onChange={(e) => setPurpose(e.target.value)} aria-label="Purpose">
-            <option value="">All purposes</option>
-            <option value="tipster_day">Tipster decisions</option>
-            <option value="ceo_review">CEO reviews</option>
-            <option value="lab_hypothesis">LAB hypotheses</option>
+          <select value={purpose} onChange={(e) => setPurpose(e.target.value)} aria-label={t("Purpose")}>
+            <option value="">{t("All purposes")}</option>
+            <option value="tipster_day">{t("Tipster decisions")}</option>
+            <option value="ceo_review">{t("CEO reviews")}</option>
+            <option value="lab_hypothesis">{t("LAB hypotheses")}</option>
           </select>
           <label className="dim">
-            <input type="checkbox" checked={failures} onChange={(e) => setFailures(e.target.checked)} /> failures only
+            <input type="checkbox" checked={failures} onChange={(e) => setFailures(e.target.checked)} /> {t("failures only")}
           </label>
-          <span className="muted">Mock-provider token counts are estimates priced at the reference model.</span>
+          <span className="muted">{t("Mock-provider token counts are estimates priced at the reference model.")}</span>
         </div>
         <table className="tab-nums">
           <thead>
             <tr>
-              <th>When</th>
-              <th>Agent</th>
-              <th>Purpose</th>
-              <th>Model</th>
-              <th className="r">Tokens</th>
-              <th className="r">Cost</th>
-              <th className="r">Retries</th>
-              <th>Status</th>
+              <th>{t("When")}</th>
+              <th>{t("Agent")}</th>
+              <th>{t("Purpose")}</th>
+              <th>{t("Model")}</th>
+              <th className="r">{t("Tokens")}</th>
+              <th className="r">{t("Cost")}</th>
+              <th className="r">{t("Retries")}</th>
+              <th>{t("Status")}</th>
             </tr>
           </thead>
           <tbody>
@@ -78,17 +79,17 @@ export function AiLog() {
                 <td>{c.purpose}</td>
                 <td className="muted">{c.model}</td>
                 <td className="r">
-                  {c.input_tokens.toLocaleString()} / {c.output_tokens.toLocaleString()}
+                  {fmtNum(c.input_tokens)} / {fmtNum(c.output_tokens)}
                   {c.estimated ? "*" : ""}
                 </td>
-                <td className="r">${c.cost_usd.toFixed(4)}</td>
+                <td className="r">${fmtNum(c.cost_usd, 4)}</td>
                 <td className="r">{c.retries}</td>
-                <td>{c.ok ? "ok" : <span className="neg">{c.used_fallback ? "fallback" : "failed"}</span>}</td>
+                <td>{c.ok ? t("ok") : <span className="neg">{c.used_fallback ? t("fallback") : t("failed")}</span>}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {data && !data.length && <div className="empty">No calls yet.</div>}
+        {data && !data.length && <div className="empty">{t("No calls yet.")}</div>}
       </div>
       {open && <PromptModal call={open} onClose={() => setOpen(null)} />}
     </div>

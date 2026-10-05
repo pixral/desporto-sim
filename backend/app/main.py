@@ -29,19 +29,15 @@ def create_app(settings: Settings | None = None, autostart_run: bool = True) -> 
         app.state.settings = settings
         runner.start()
         if autostart_run:
+            # the most recent company, even a finished one: the title screen shows how it ended
             saves = repo.list_saves(limit=20)
-            resumed = False
-            for row in (s for s in saves if not s["ended"]):
+            for row in saves:
                 try:
                     await runner.load(row["id"])
                 except PermissionError:  # an ironman company's older save
                     continue
-                resumed = True
                 break
-            if not resumed:
-                from app.domain.world import RunConfig
-
-                await runner.new_run(RunConfig(ai_provider=settings.ai_provider))
+            # with no save to resume, the title screen offers "New game" (nothing is founded behind your back)
         yield
         if runner.engine is not None and not runner.engine.world.ended:
             await runner.save("Autosave on shutdown")

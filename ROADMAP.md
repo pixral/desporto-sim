@@ -60,8 +60,13 @@ AI CEO as your advisor. Briefings stop the clock (monthly by default), office me
 office hours with weekly limits, a queue for review-only decisions, the LAB brief and chosen applicant tests,
 the board's warning and firing, five seasons to retirement, ironman. Watch mode is guarded by golden runs.
 
+Polish, title screen and Spanish: tighter colour rules (orange = you, blue = advisor, red = destructive, cream =
+selected, brighter text, fewer borders); a title screen with the company's building on a living street that grows,
+dims or burns with the company; the interface in Spanish (generated texts still English).
+
 ## Next
 
+0. Spanish for generated texts (history, the paper, results, advisor notes, thoughts): a per-company language.
 0. CEO mode phase 2: decisions that come to you (poaching, raises, investors, the press, tilt, regulators,
    takeover bids), pilots and stopping experiments.
 1. Visual polish pass with fresh eyes on a long run (label overlap at small zoom, crowded Bench).

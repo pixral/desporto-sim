@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { api } from "./api/client";
+import { useLang } from "./i18n";
+import { StartMenu } from "./menu/StartMenu";
 import { Briefing, SignoffResults } from "./components/Briefing";
 import { DepartmentPanel } from "./components/DepartmentPanel";
 import { EmployeePanel } from "./components/EmployeePanel";
@@ -25,15 +27,19 @@ import { Staff } from "./views/Staff";
 
 export function App() {
   const state = useStore((s) => s.state);
-  const connected = useStore((s) => s.connected);
   const tab = useStore((s) => s.tab);
   const selectedEmployee = useStore((s) => s.selectedEmployee);
   const selectedDepartment = useStore((s) => s.selectedDepartment);
   const showNewRun = useStore((s) => s.showNewRun);
   const toast = useStore((s) => s.toast);
   const notify = useStore((s) => s.notify);
+  const menuOpen = useStore((s) => s.menuOpen);
+  const lang = useLang((s) => s.lang);
 
   useEffect(() => connectSocket(), []);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   useEffect(() => {
     if (!toast) return;
@@ -47,6 +53,7 @@ export function App() {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return;
       const s = useStore.getState();
+      if (s.menuOpen || s.showNewRun) return;
       if (e.key === " " && s.state && !s.state.run.ended) {
         e.preventDefault();
         if (s.state.player?.review_open) s.setBriefingHidden(null); // the clock waits for the briefing
@@ -60,23 +67,20 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  if (!state) {
+  // the title screen (also when no company is loaded yet); changing the language remounts everything
+  if (menuOpen || !state) {
     return (
-      <div className="app" style={{ placeItems: "center", display: "grid" }}>
-        <div className="panel" style={{ textAlign: "center", maxWidth: 420 }}>
-          <h2 style={{ color: "var(--accent)" }}>DESPORTO &amp; CIA.</h2>
-          <p className="dim">
-            {connected ? "Waiting for the simulation…" : "Connecting to the simulation server on port 8000…"}
-          </p>
-          <p className="muted">Start the backend with: uvicorn app.main:app --port 8000</p>
-        </div>
+      <div className="app-root" key={lang}>
+        <StartMenu />
+        {showNewRun && <NewRunDialog />}
+        {toast && <div className="toast">{toast}</div>}
       </div>
     );
   }
 
   const office = tab === "office";
   return (
-    <div className="app">
+    <div className="app" key={lang}>
       <TopBar />
       <KpiStrip />
       <div className={`main ${office ? "" : "no-sidebar"}`}>

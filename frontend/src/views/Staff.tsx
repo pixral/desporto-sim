@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { api } from "../api/client";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
 import { eur, pct, signedEur, tone } from "../util/format";
 import { useLive } from "../util/hooks";
@@ -34,26 +35,26 @@ export function Staff() {
     <div className="page">
       <div className="panel">
         <div className="panel-title">
-          <h2>Staff</h2>
+          <h2>{t("Staff")}</h2>
           <label className="dim">
-            <input type="checkbox" checked={former} onChange={(e) => setFormer(e.target.checked)} /> show former employees
+            <input type="checkbox" checked={former} onChange={(e) => setFormer(e.target.checked)} /> {t("show former employees")}
           </label>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table className="tab-nums">
             <thead>
               <tr>
-                {head("name", "Name")}
-                {head("title", "Role")}
-                {head("department", "Desk")}
-                {head("profit", "Career P/L", true)}
+                {head("name", t("Name"))}
+                {head("title", t("Role"))}
+                {head("department", t("Desk"))}
+                {head("profit", t("Career P/L"), true)}
                 {head("roi", "ROI", true)}
-                {head("bets", "Bets", true)}
-                {head("stress", "Stress", true)}
-                {head("reputation", "Rep", true)}
-                {head("tenure_days", "Days", true)}
-                {head("salary", "Salary", true)}
-                <th>Status</th>
+                {head("bets", t("Bets"), true)}
+                {head("stress", t("Stress"), true)}
+                {head("reputation", t("Rep"), true)}
+                {head("tenure_days", t("Days"), true)}
+                {head("salary", t("Salary"), true)}
+                <th>{t("Status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -61,13 +62,13 @@ export function Staff() {
                 <tr key={e.id} className={`clickable ${e.active ? "" : "inactive"}`} onClick={() => select(e.id)}>
                   <td>
                     {e.name}
-                    {e.under_review && <span className="pill lost" style={{ marginLeft: 6 }}>review</span>}
+                    {e.under_review && <span className="pill lost" style={{ marginLeft: 6 }}>{t("review")}</span>}
                   </td>
                   <td>
-                    {e.title}
-                    <div className="muted">{e.specialty_label}</div>
+                    {t(e.title)}
+                    <div className="muted">{t(e.specialty_label)}</div>
                   </td>
-                  <td>{e.department ?? "—"}</td>
+                  <td>{e.department ? t(e.department) : "—"}</td>
                   <td className={`r ${tone(e.profit)}`}>{e.role === "tipster" ? signedEur(e.profit, 2) : "—"}</td>
                   <td className="r">{e.role === "tipster" ? pct(e.roi, 1, true) : "—"}</td>
                   <td className="r">{e.bets || "—"}</td>
@@ -75,7 +76,7 @@ export function Staff() {
                   <td className="r">{e.reputation.toFixed(0)}</td>
                   <td className="r">{e.tenure_days}</td>
                   <td className="r">{eur(e.salary)}</td>
-                  <td>{e.active ? `${e.mood}` : <span className="muted">{e.leave_reason}</span>}</td>
+                  <td>{e.active ? t(e.mood) : <span className="muted">{e.leave_reason}</span>}</td>
                 </tr>
               ))}
             </tbody>

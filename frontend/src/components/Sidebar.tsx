@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { t } from "../i18n";
 import { useStore } from "../state/store";
-import { dayMonth, MARKET_LABEL, signedEur } from "../util/format";
+import { dayMonth, eur, fmtNum, MARKET_LABEL, signedEur } from "../util/format";
 
 export function Sidebar() {
   const state = useStore((s) => s.state);
@@ -16,56 +17,60 @@ export function Sidebar() {
     <aside className="sidebar">
       {state.memo && (
         <div className="memo">
-          <h3>Memo from {ceo?.name ?? "the CEO"}</h3>
+          <h3>{t("Memo from {name}", { name: ceo?.name ?? t("the CEO") })}</h3>
           <div>{state.memo.text}</div>
           <div className="meta">
-            {state.memo.scope} review · {dayMonth(state.memo.time)}
+            {t("{scope} review", { scope: t(state.memo.scope) })} · {dayMonth(state.memo.time)}
           </div>
         </div>
       )}
       {state.city.headline && (
-        <button className="paper-teaser" onClick={() => setTab("paper")} title="Read the morning paper">
+        <button className="paper-teaser" onClick={() => setTab("paper")} title={t("Read the morning paper")}>
           <span className="paper-name">{state.city.paper}</span>
           <span>{state.city.headline}</span>
         </button>
       )}
       {player && (
-        <button className="player-box" onClick={() => setTab("ceo")} title="Your CEO page: queue, log, season">
+        <button className="player-box" onClick={() => setTab("ceo")} title={t("Your CEO page: queue, log, season")}>
           <span>
-            Season {player.season}/{player.seasons_total} · {player.days_to_season_end} days to 1 June
+            {t("Season {season}/{total} · {days} days to 1 June", {
+              season: player.season,
+              total: player.seasons_total,
+              days: player.days_to_season_end,
+            })}
           </span>
           <span className="muted">
             {player.review_open
-              ? "A briefing is waiting for you"
+              ? t("A briefing is waiting for you")
               : player.next_review.date
-                ? `Next briefing ${dayMonth(player.next_review.date)} (${player.next_review.scope})`
-                : "Your advisor runs the reviews"}{" "}
-            · talks {player.limits_left.TALK ?? 0} · firings {player.limits_left.FIRE ?? 0}
-            {player.queue.length ? ` · ${player.queue.length} queued` : ""}
+                ? t("Next briefing {date} ({scope})", { date: dayMonth(player.next_review.date), scope: t(player.next_review.scope ?? "") })
+                : t("Your advisor runs the reviews")}{" "}
+            · {t("talks {talks} · firings {firings}", { talks: player.limits_left.TALK ?? 0, firings: player.limits_left.FIRE ?? 0 })}
+            {player.queue.length ? ` · ${t("{n} queued", { n: player.queue.length })}` : ""}
           </span>
-          {player.board.warned && <span className="neg">The board has warned you</span>}
+          {player.board.warned && <span className="neg">{t("The board has warned you")}</span>}
         </button>
       )}
       {player
         ? player.advisor_thought && (
-            <div className="thought" title="Your advisor's read of the situation">
-              Your advisor: “{player.advisor_thought}”
+            <div className="thought" title={t("Your advisor's read of the situation")}>
+              {t("Your advisor: “{thought}”", { thought: player.advisor_thought })}
             </div>
           )
         : state.ceo_thought && (
-            <div className="thought" title="The CEO's private read of the situation">
-              {ceo?.name} thinks: “{state.ceo_thought}”
+            <div className="thought" title={t("The CEO's private read of the situation")}>
+              {t("{name} thinks: “{thought}”", { name: ceo?.name ?? "", thought: state.ceo_thought })}
             </div>
           )}
       <section>
         <div className="panel-title">
-          <h3>Live feed</h3>
+          <h3>{t("Live feed")}</h3>
           <button className="ghost" onClick={() => setNotableOnly((v) => !v)}>
-            {notableOnly ? "Show all" : "Notable only"}
+            {notableOnly ? t("Show all") : t("Notable only")}
           </button>
         </div>
         <div className="feed">
-          {events.length === 0 && <div className="empty">Nothing yet.</div>}
+          {events.length === 0 && <div className="empty">{t("Nothing yet.")}</div>}
           {events.slice(0, 30).map((e) => (
             <div
               key={e.id}
@@ -86,9 +91,9 @@ export function Sidebar() {
         </div>
       </section>
       <section>
-        <h3 style={{ marginBottom: 8 }}>Bet slip</h3>
+        <h3 style={{ marginBottom: 8 }}>{t("Bet slip")}</h3>
         <div className="feed">
-          {bets.length === 0 && <div className="empty">No bets yet.</div>}
+          {bets.length === 0 && <div className="empty">{t("No bets yet.")}</div>}
           {bets.map((b) => (
             <div key={b.id} className="ticker-row" onClick={() => selectEmployee(b.employee_id)} style={{ cursor: "pointer" }} title={b.reason}>
               <div>
@@ -96,11 +101,11 @@ export function Sidebar() {
                   {b.employee}: {b.selection} <span className="muted">({MARKET_LABEL[b.market]})</span>
                 </div>
                 <div className="muted">
-                  {b.match} · €{b.stake.toFixed(2)} @ {b.odds.toFixed(2)}
+                  {b.match} · {eur(b.stake, 2)} @ {fmtNum(b.odds, 2)}
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <span className={`pill ${b.status}`}>{b.status}</span>
+                <span className={`pill ${b.status}`}>{t(b.status)}</span>
                 {b.status !== "open" && <div className={b.profit >= 0 ? "pos" : "neg"}>{signedEur(b.profit, 2)}</div>}
               </div>
             </div>

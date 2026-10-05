@@ -2,19 +2,64 @@ import { useState } from "react";
 import { api } from "../api/client";
 import type { PressItem, StockRow } from "../api/types";
 import { Sparkline } from "../components/charts";
+import { currentLang, t } from "../i18n";
 import { useStore } from "../state/store";
-import { pct } from "../util/format";
+import { fmtNum, pct } from "../util/format";
 import { useLive } from "../util/hooks";
 
 const SECTION_TITLE: Record<string, string> = {
-  business: "Business",
-  city: "The city",
-  sports: "Sport",
-  company: "Desporto watch",
+  get business() {
+    return t("Business");
+  },
+  get city() {
+    return t("The city");
+  },
+  get sports() {
+    return t("Sport");
+  },
+  get company() {
+    return t("Desporto watch");
+  },
 };
 
+const SECTOR_LABEL: Record<string, string> = {
+  get betting() {
+    return t("betting");
+  },
+  get media() {
+    return t("media");
+  },
+  get construction() {
+    return t("construction");
+  },
+  get sportswear() {
+    return t("sportswear");
+  },
+  get tech() {
+    return t("tech");
+  },
+  get banking() {
+    return t("banking");
+  },
+  get energy() {
+    return t("energy");
+  },
+  get airlines() {
+    return t("airlines");
+  },
+  get food() {
+    return t("food");
+  },
+};
+
+/** Like toLocaleString with at most `digits` decimals, in the current language's style. */
+function upTo(v: number, digits: number): string {
+  const f = 10 ** digits;
+  return fmtNum(v, Number.isInteger(Math.round(v * f) / f) ? 0 : digits);
+}
+
 function longDate(iso: string): string {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(currentLang() === "es" ? "es-ES" : "en-GB", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -44,7 +89,7 @@ function Story({ item, big = false }: { item: PressItem; big?: boolean }) {
       )}
       {item.effect && (
         <div className="effect">
-          <b>For us:</b> {item.effect}
+          <b>{t("For us:")}</b> {item.effect}
         </div>
       )}
     </article>
@@ -56,11 +101,11 @@ function StockTable({ rows }: { rows: StockRow[] }) {
     <table className="stocks">
       <thead>
         <tr>
-          <th>Ticker</th>
-          <th>Company</th>
-          <th className="r">Close</th>
-          <th className="r">Day</th>
-          <th className="r">30 days</th>
+          <th>{t("Ticker")}</th>
+          <th>{t("Company")}</th>
+          <th className="r">{t("Close|price")}</th>
+          <th className="r">{t("Day")}</th>
+          <th className="r">{t("30 days")}</th>
         </tr>
       </thead>
       <tbody>
@@ -71,9 +116,9 @@ function StockTable({ rows }: { rows: StockRow[] }) {
             </td>
             <td>
               {s.name}
-              <div className="sector">{s.sector}</div>
+              <div className="sector">{SECTOR_LABEL[s.sector] ?? s.sector}</div>
             </td>
-            <td className="r num">{s.price.toFixed(2)}</td>
+            <td className="r num">{fmtNum(s.price, 2)}</td>
             <td className="r">
               <Change v={s.change} />
             </td>
@@ -92,11 +137,11 @@ export function Newspaper() {
   const [day, setDay] = useState<string | undefined>(undefined);
   const { data, error } = useLive(() => api.newspaper(day), `${day ?? "latest"}:${state?.city.edition}:${state?.sandbox.god_actions}`);
   if (error) return <div className="page"><div className="panel empty">{error}</div></div>;
-  if (!data) return <div className="page"><div className="panel empty">Fetching the paper…</div></div>;
+  if (!data) return <div className="page"><div className="panel empty">{t("Fetching the paper…")}</div></div>;
   if (!data.available) {
     return (
       <div className="page">
-        <div className="panel empty">{data.paper} prints its first edition tomorrow morning at 08:00.</div>
+        <div className="panel empty">{t("{paper} prints its first edition tomorrow morning at 08:00.", { paper: data.paper })}</div>
       </div>
     );
   }
@@ -112,20 +157,20 @@ export function Newspaper() {
       <div className="paper">
         <div className="paper-nav">
           <button onClick={() => setDay(data.prev ?? undefined)} disabled={!data.prev}>
-            ‹ Previous
+            {t("‹ Previous")}
           </button>
           <span className="muted-ink">
-            {latest ? "Today's edition" : "Back issue"} · No. {data.edition_no}
+            {latest ? t("Today's edition") : t("Back issue")} · {t("No. {n}", { n: data.edition_no ?? "" })}
           </span>
           <button onClick={() => setDay(data.next ?? undefined)} disabled={!data.next}>
-            Next ›
+            {t("Next ›")}
           </button>
-          {!latest && <button onClick={() => setDay(undefined)}>Today</button>}
+          {!latest && <button onClick={() => setDay(undefined)}>{t("Today")}</button>}
         </div>
         <header className="masthead">
           <h1>{data.paper.toUpperCase()}</h1>
           <div className="dateline">
-            {longDate(data.day!)} · {data.city} · Morning edition
+            {longDate(data.day!)} · {data.city} · {t("Morning edition")}
           </div>
         </header>
 
@@ -144,7 +189,7 @@ export function Newspaper() {
             </div>
             {(data.results?.length ?? 0) > 0 && (
               <section className="results">
-                <h4>Results</h4>
+                <h4>{t("Results")}</h4>
                 <div className="results-grid">
                   {data.results!.map((r, i) => (
                     <div key={i} className="result">
@@ -161,12 +206,12 @@ export function Newspaper() {
 
           <aside className="paper-side">
             <section>
-              <h4>Markets</h4>
+              <h4>{t("Markets")}</h4>
               {data.index && (
                 <div className="index-box">
                   <div>
-                    <div className="sector">PVX 12 index</div>
-                    <div className="num big">{data.index.value.toLocaleString("en-GB", { maximumFractionDigits: 1 })}</div>
+                    <div className="sector">{t("PVX 12 index")}</div>
+                    <div className="num big">{upTo(data.index.value, 1)}</div>
                     <Change v={data.index.change} />
                   </div>
                   <Sparkline values={data.index.spark} width={120} height={40} color="#5b4a3a" dot="#2b2130" />
@@ -174,34 +219,34 @@ export function Newspaper() {
               )}
               {wrap?.body && <p className="wrap">{wrap.body}</p>}
               <StockTable rows={data.stocks ?? []} />
-              <p className="footnote">Highlighted: listed bookmakers. Investors price our subscriber business like theirs.</p>
+              <p className="footnote">{t("Highlighted: listed bookmakers. Investors price our subscriber business like theirs.")}</p>
             </section>
             <section>
-              <h4>The economy &amp; us</h4>
+              <h4>{t("The economy & us")}</h4>
               <dl className="econ">
-                <dt>Central bank rate</dt>
-                <dd>{data.base_rate?.toFixed(2)}%</dd>
-                <dt>Our credit line</dt>
-                <dd>{pct(data.loan_rate_monthly ?? 0, 2)} / month</dd>
-                <dt>Consumer confidence</dt>
+                <dt>{t("Central bank rate")}</dt>
+                <dd>{typeof data.base_rate === "number" ? fmtNum(data.base_rate, 2) : ""}%</dd>
+                <dt>{t("Our credit line")}</dt>
+                <dd>{t("{rate} / month", { rate: pct(data.loan_rate_monthly ?? 0, 2) })}</dd>
+                <dt>{t("Consumer confidence")}</dt>
                 <dd>
-                  {(data.economy ?? 0) > 0.15 ? "Upbeat" : (data.economy ?? 0) < -0.15 ? "Gloomy" : "Steady"} (
+                  {(data.economy ?? 0) > 0.15 ? t("Upbeat") : (data.economy ?? 0) < -0.15 ? t("Gloomy") : t("Steady")} (
                   {(data.economy ?? 0) >= 0 ? "+" : ""}
-                  {(data.economy ?? 0).toFixed(2)})
+                  {fmtNum(data.economy ?? 0, 2)})
                 </dd>
-                <dt>Betting stocks vs. 120-day average</dt>
-                <dd>×{(data.betting_sentiment ?? 1).toFixed(2)} on our subscriber value</dd>
+                <dt>{t("Betting stocks vs. 120-day average")}</dt>
+                <dd>{t("×{x} on our subscriber value", { x: fmtNum(data.betting_sentiment ?? 1, 2) })}</dd>
               </dl>
               {(data.modifiers?.length ?? 0) > 0 ? (
                 <ul className="effects">
                   {data.modifiers!.map((m, i) => (
                     <li key={i}>
-                      <b>{m.label}</b> — {m.days_left} days left
+                      <b>{m.label}</b> — {t("{n} days left", { n: m.days_left })}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="footnote">No news is currently changing how the company works.</p>
+                <p className="footnote">{t("No news is currently changing how the company works.")}</p>
               )}
             </section>
           </aside>
