@@ -48,9 +48,19 @@ export function OfficeCanvas() {
     });
     ro.observe(wrap);
     let raf = 0;
+    if (import.meta.env.DEV) {
+      // debugging handles (work even while the tab is in the background and rAF is paused)
+      Object.assign(window, {
+        __office: r,
+        __draw: () => r.frame(latestState(), performance.now()),
+        __focus: (x: number, y: number, zoom: number) => {
+          r.focusTile(x, y, zoom);
+          r.frame(latestState(), performance.now());
+        },
+      });
+    }
     const loop = (t: number) => {
       r.selectedId = useStore.getState().selectedEmployee;
-      if (import.meta.env.DEV) (window as unknown as { __office: OfficeRenderer }).__office = r;
       r.frame(latestState(), t);
       raf = requestAnimationFrame(loop);
     };

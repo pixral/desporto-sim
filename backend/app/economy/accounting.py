@@ -13,6 +13,7 @@ from app.domain.world import World
 from app.simulation import metrics
 
 from . import config as C
+from . import market
 from . import valuation as val
 
 
@@ -23,9 +24,9 @@ def accrue_daily_costs(world: World) -> float:
     mult = C.preset(world.config.difficulty)["cost_mult"]
     active = world.active_employees()
     salaries = sum(e.salary for e in active) / 30.0
-    rent = mult * (C.RENT_BASE + C.RENT_PER_HEAD * len(active)) / 30.0
+    rent = (mult * (C.RENT_BASE + C.RENT_PER_HEAD * len(active)) + market.facilities_monthly_cost(world)) / 30.0
     comps = {c for d in world.active_departments() for c in d.competitions}
-    data = mult * C.DATA_PER_COMPETITION * len(comps) / 30.0
+    data = mult * C.DATA_PER_COMPETITION * len(comps) * market.modifier(world, "data_prices") / 30.0
     marketing = f.marketing_budget / 30.0
     lab = f.lab_budget / 30.0
     for target in (f.month, f.totals):
@@ -179,9 +180,12 @@ def subscriptions_update(world: World) -> tuple[int, int, float]:
     perf = metrics.company_stats(world, 90)
     track = perf.roi if perf.bets >= 30 else 0.0
     p = C.preset(world.config.difficulty)
-    churn = clamp(p["sub_churn"] - 0.6 * track, 0.025, 0.30)
+    mood = market.economy(world)  # consumer confidence in the city
+    churn = clamp(p["sub_churn"] - 0.6 * track - 0.01 * mood, 0.025, 0.30)
     quality = 1.0 + clamp(track * 6, -0.5, 0.6)
-    new = p["sub_acq"] * math.sqrt(max(f.marketing_budget, 0.0)) * quality
+    reach = (market.modifier(world, "ad_ban") * market.modifier(world, "sub_boost") * (1.0 + 0.15 * mood)
+             * (C.STUDIO_ACQUISITION if market.leased(world, "studio") else 1.0))
+    new = p["sub_acq"] * math.sqrt(max(f.marketing_budget, 0.0)) * quality * reach
     lost = round(f.subscribers * churn)
     gained = round(new)
     f.subscribers = max(0, f.subscribers - lost + gained)
@@ -201,7 +205,7 @@ def monthly_close(world: World, month: str) -> MonthlyReport:
             bonuses += b
     f.month.bonuses += bonuses
     f.totals.bonuses += bonuses
-    interest = f.debt * C.LOAN_INTEREST_MONTHLY
+    interest = f.debt * market.loan_rate_monthly(world)
     f.month.interest += interest
     f.totals.interest += interest
     _, _, revenue = subscriptions_update(world)

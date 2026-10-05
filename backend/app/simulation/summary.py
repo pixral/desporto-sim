@@ -45,4 +45,5 @@ def build_summary(world: World) -> RunSummary:
         ai_calls=world.ai_stats.calls,
         ceo_changes=world.stats.ceo_changes,
         seasons=len(world.recaps),
+        god_actions=world.stats.god_actions,
     )

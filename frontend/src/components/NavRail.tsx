@@ -7,6 +7,7 @@ const TABS: { key: Tab; label: string; ico: string }[] = [
   { key: "lab", label: "LAB", ico: "⚗" },
   { key: "history", label: "History", ico: "≡" },
   { key: "ceo", label: "CEO", ico: "♛" },
+  { key: "paper", label: "Paper", ico: "▤" },
   { key: "ai", label: "AI log", ico: "⌘" },
   { key: "saves", label: "Saves", ico: "▣" },
 ];

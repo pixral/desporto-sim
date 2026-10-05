@@ -11,6 +11,9 @@ from app.agents.relationships import top_relationships
 from app.domain.betting import Bet
 from app.domain.people import Employee
 from app.domain.world import World
+from app.economy import bookmakers
+from app.economy import config as EC
+from app.economy import market
 from app.economy import valuation as val
 
 from . import metrics
@@ -113,6 +116,7 @@ def state_view(world: World, runner: dict[str, Any] | None = None, providers: di
             "month_profit": _r(d.month_profit), "day_profit": _r(d.day_profit), "total_profit": _r(d.total_profit),
             "bets": d.bets, "competitions": d.competitions, "head_id": d.head_id, "active": d.active,
             "headcount": len(world.department_members(d.id)),
+            "book_limits": {b: bookmakers.limit(d, b) for b in EC.BOOK_LIMITS},
         } for d in world.departments.values() if d.active],
         "employees": [employee_card(world, e) for e in visible],
         "events": [e.model_dump(mode="json") for e in world.events[-40:]],
@@ -130,6 +134,37 @@ def state_view(world: World, runner: dict[str, Any] | None = None, providers: di
         "summary": world.summary.model_dump(mode="json") if world.summary else None,
         "latest_recap": ({"id": world.recaps[-1].id, "season": world.recaps[-1].season}
                          if world.recaps else None),
+        "office": office_view(world),
+        "city": city_brief(world),
+        "sandbox": {"god_actions": world.stats.god_actions},
+    }
+
+
+def office_view(world: World) -> dict[str, Any]:
+    mult = EC.preset(world.config.difficulty)["cost_mult"]
+    return {
+        "leased": {k: d.isoformat() for k, d in world.office.leased.items()},
+        "desk_rooms": market.desk_rooms(world),
+        "facilities": [{"key": k, "name": v["name"], "effect": v["effect"], "leased": market.leased(world, k),
+                        "since": world.office.leased[k].isoformat() if market.leased(world, k) else None,
+                        "fit_out": round(float(v["fit_out"]) * mult, 0),  # type: ignore[arg-type]
+                        "monthly_cost": round(market.facility_monthly_cost(world, k), 0)}
+                       for k, v in EC.FACILITIES.items()],
+    }
+
+
+def city_brief(world: World) -> dict[str, Any]:
+    city = world.city
+    latest = city.editions[-1] if city.editions else None
+    lead = next((p for p in reversed(city.press) if p.day == latest and p.lead), None) if latest else None
+    idx = city.index
+    return {
+        "paper": city.paper, "name": city.name, "edition": latest.isoformat() if latest else None,
+        "headline": lead.headline if lead else None,
+        "index": idx[-1] if idx else None,
+        "index_change": round(idx[-1] / idx[-2] - 1, 4) if len(idx) >= 2 else None,
+        "betting_sentiment": round(market.betting_sentiment(world), 3),
+        "modifiers": market.active_modifiers(world),
     }
 
 
@@ -201,6 +236,9 @@ def department_detail(world: World, dept_id: str) -> dict[str, Any] | None:
         "profit_by_month": d.profit_by_month, "last30": p30.model_dump(), "last90": p90.model_dump(),
         "members": [employee_card(world, e) for e in world.department_members(d.id)],
         "head": world.employees[d.head_id].name if d.head_id in world.employees else None,
+        "book_limits": [{"book": b, "limit": bookmakers.limit(d, b), "default": v,
+                         "bets": sum(1 for x in world.bets.values() if x.department_id == d.id and x.book == b)}
+                        for b, v in EC.BOOK_LIMITS.items()],
     }
 
 

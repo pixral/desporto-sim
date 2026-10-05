@@ -16,6 +16,7 @@ from app.domain.strategy import PARAM_BOUNDS
 from app.domain.world import World
 from app.economy import accounting
 from app.economy import config as EC
+from app.economy import market
 from app.simulation import history
 
 from . import relationships
@@ -23,7 +24,6 @@ from .catalog import (
     DEPARTMENT_KINDS,
     LEVEL_BANKROLL_WEIGHT,
     LEVEL_SALARY,
-    MAX_DESK_ROOMS,
     MAX_DESK_SIZE,
     TIPSTER_TITLES,
 )
@@ -43,11 +43,51 @@ def free_desk_index(world: World, dept_id: str) -> int | None:
 
 
 def free_room_slot(world: World) -> int | None:
+    """Slots 0-5 are the original floor; slot 6 exists once the east desk wing is leased."""
     used = {d.room_slot for d in world.active_departments() if d.kind != "lab"}
-    for i in range(MAX_DESK_ROOMS):
+    for i in range(market.desk_rooms(world)):
         if i not in used:
             return i
     return None
+
+
+def lease_facility(world: World, key: str, free: bool = False) -> tuple[bool, str]:
+    """Sign a lease in the east wing and pay the fit-out. `free` is for the sandbox tools."""
+    if key not in EC.FACILITIES:
+        return False, "unknown facility"
+    if market.leased(world, key):
+        return False, "already leased"
+    spec = EC.FACILITIES[key]
+    fit_out = 0.0 if free else float(spec["fit_out"]) * EC.preset(world.config.difficulty)["cost_mult"]  # type: ignore[arg-type]
+    if not free and world.finances.cash < fit_out + 100:
+        return False, f"not enough cash for the €{fit_out:,.0f} fit-out"
+    f = world.finances
+    f.cash -= fit_out
+    f.month.other_costs += fit_out
+    f.totals.other_costs += fit_out
+    world.office.leased[key] = world.today
+    world.stats.facilities_leased += 1
+    rent = market.facility_monthly_cost(world, key)
+    history.record(world, "facility_leased", f"{spec['name']} opens", f"{spec['effect']} Fit-out €{fit_out:,.0f}, "
+                   f"running cost about €{rent:,.0f}/month.", 3, "good", data={"facility": key})
+    return True, f"{spec['name']} leased (fit-out €{fit_out:,.0f}, ~€{rent:,.0f}/month)"
+
+
+def release_facility(world: World, key: str, free: bool = False) -> tuple[bool, str]:
+    if not market.leased(world, key):
+        return False, "not leased"
+    if key == "desk_wing" and any(d.room_slot == 6 and d.kind != "lab" for d in world.active_departments()):
+        return False, "a desk still works in the east wing; close or move it first"
+    spec = EC.FACILITIES[key]
+    fee = 0.0 if free else EC.LEASE_BREAK_MONTHS * market.facility_monthly_cost(world, key)
+    f = world.finances
+    f.cash -= fee
+    f.month.other_costs += fee
+    f.totals.other_costs += fee
+    del world.office.leased[key]
+    history.record(world, "facility_released", f"{spec['name']} closes", f"Lease given up (break fee €{fee:,.0f}).",
+                   2, "bad", data={"facility": key})
+    return True, f"{spec['name']} given up (fee €{fee:,.0f})"
 
 
 def depart(world: World, emp: Employee, reason: str, fired: bool, severance: bool = True) -> None:
@@ -450,6 +490,66 @@ def _loan(ctx: _Ctx, a) -> tuple[bool, str]:
     return True, f"borrowed €{got:,.0f}"
 
 
+def _lease(ctx: _Ctx, a) -> tuple[bool, str]:
+    w = ctx.world
+    if ctx.scope != "monthly":
+        return False, "leases are signed at the monthly review"
+    if w.finances.status == "distress":
+        return False, "no landlord signs with a company in distress"
+    return lease_facility(w, a.facility or "")
+
+
+def _release(ctx: _Ctx, a) -> tuple[bool, str]:
+    return release_facility(ctx.world, a.facility or "")
+
+
+TEAM_ACTIVITIES = ("go-karting", "karaoke", "a long paella lunch", "bowling", "an escape room", "a football five-a-side")
+
+
+def _team_event(ctx: _Ctx, a) -> tuple[bool, str]:
+    w = ctx.world
+    if ctx.scope != "monthly":
+        return False, "team events are planned at the monthly review"
+    since = w.today.toordinal() - int(w.milestones.get("last_team_event", 0))
+    if since < EC.TEAM_EVENT_COOLDOWN_DAYS:
+        return False, f"the last team event was only {since} days ago"
+    staff = [e for e in w.active_employees() if not e.is_away(w.today)]
+    cost = round(EC.TEAM_EVENT_PER_HEAD * len(staff) * EC.preset(w.config.difficulty)["cost_mult"], 0)
+    if w.finances.cash < cost + 100:
+        return False, "not enough cash"
+    w.finances.cash -= cost
+    w.finances.month.other_costs += cost
+    w.finances.totals.other_costs += cost
+    for e in staff:
+        if e.role != "ceo":
+            e.psyche.stress = clamp(e.psyche.stress - 0.1, 0.02, 0.98)
+            e.psyche.confidence = clamp(e.psyche.confidence + 0.03, 0.05, 0.95)
+    w.milestones["last_team_event"] = w.today.toordinal()
+    w.stats.team_events += 1
+    activity = ctx.rng.choice(TEAM_ACTIVITIES)
+    history.record(w, "team_event", f"Team night out: {activity}", f"€{cost:,.0f} on the company. {a.reason}".strip(),
+                   2, "good", [e.id for e in staff if e.role != "ceo"][:6])
+    return True, f"team night out ({activity}, €{cost:,.0f})"
+
+
+def _time_off(ctx: _Ctx, a) -> tuple[bool, str]:
+    from app.simulation import moods  # simulation depends on agents, not the other way round at import time
+
+    w = ctx.world
+    e = _emp(ctx, a.employee_id)
+    if e is None:
+        return False, "no such active employee"
+    if e.is_away(w.today):
+        return False, f"{e.name} is already away"
+    days = int(clamp(a.value or 3, 1, 7))
+    moods.send_home(w, e, days, "leave")
+    e.add_career(w.today, "leave", f"Given {days} day(s) off to recover.")
+    w.stats.days_off_given += days
+    ctx.touched.discard(e.id)
+    history.record(w, "time_off", f"{e.name} gets {days} day(s) off", a.reason, 1, "good", [e.id], e.department_id)
+    return True, f"{e.name} off for {days} day(s)"
+
+
 def _repay(ctx: _Ctx, a) -> tuple[bool, str]:
     paid = accounting.repay_loan(ctx.world, a.amount or 0.0)
     if paid <= 0:
@@ -464,5 +564,6 @@ _HANDLERS = {
     "SET_LAB_BUDGET": _lab_budget, "SET_MARKETING_BUDGET": _marketing, "DEPLOY_STRATEGY": _deploy,
     "ADJUST_STRATEGY": _adjust, "FREEZE_HIRING": _freeze, "UNFREEZE_HIRING": _unfreeze,
     "CUT_SALARIES": _cut_salaries, "TAKE_LOAN": _loan, "REPAY_LOAN": _repay,
+    "LEASE_SPACE": _lease, "RELEASE_SPACE": _release, "TEAM_EVENT": _team_event, "GIVE_TIME_OFF": _time_off,
 }
 

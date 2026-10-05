@@ -16,6 +16,7 @@ const COST_ROWS: [keyof CostLines, string][] = [
   ["lab", "LAB budget"],
   ["ai", "AI / API"],
   ["interest", "Interest"],
+  ["other_costs", "One-offs (fit-outs, disasters)"],
 ];
 
 export function Dashboard() {
@@ -113,6 +114,12 @@ export function Dashboard() {
                 <td>Subscriptions</td>
                 <td className="r dim">collected at month end ({data.subscribers} × {eur(data.subscription_price)})</td>
               </tr>
+              {mtd.other_income ? (
+                <tr>
+                  <td>Other income</td>
+                  <td className="r pos">+{eur(mtd.other_income, 2)}</td>
+                </tr>
+              ) : null}
               {COST_ROWS.map(([k, label]) =>
                 mtd[k] ? (
                   <tr key={k}>

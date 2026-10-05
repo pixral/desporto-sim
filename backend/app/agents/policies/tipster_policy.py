@@ -41,6 +41,8 @@ def _state(ctx: dict[str, Any]) -> dict[str, float]:
     hubris = clamp((conf - 0.58) * 1.8 * (0.4 + t["aggressive"] + 0.5 * t["ambitious"])
                    + 0.15 * max(0, streak - 3) / 4, 0, 1)
     inactivity = clamp((a["no_bet_rate"] - 0.75) * 3 * (0.3 + review + distress) * (0.5 + t["ambitious"]), 0, 1)
+    if a.get("on_tilt"):  # chasing yesterday's losses
+        desperation = max(desperation, clamp(0.4 + 0.25 * t["risk_seeking"] + 0.15 * stress, 0, 1))
     return {"desperation": desperation, "fear": fear, "hubris": hubris, "inactivity": inactivity,
             "stress": stress, "conf": conf, "risk": a["risk_tolerance"], "distress": distress, "review": review}
 
@@ -59,6 +61,9 @@ def decide_day(ctx: dict[str, Any], rng: random.Random) -> dict[str, Any]:
              + 0.03 * s["fear"] - 0.04 * s["desperation"] - 0.025 * s["inactivity"] - 0.012 * s["hubris"])
     threshold = strat["min_edge"] + shift
     decisions: list[dict[str, Any]] = []
+    if a.get("lost_nerve"):
+        return {"thought": "I can't pick anything right now. Every bet looks like the next loss.",
+                "decisions": [_no_bet(m, "Lost my nerve. Can't pull the trigger today.", 0.2) for m in ctx["matches"]]}
     for m in ctx["matches"]:
         best: dict[str, Any] | None = None
         for c in m["candidates"]:
@@ -169,6 +174,8 @@ def _thought(ctx: dict[str, Any], s: dict[str, float], decisions: list[dict[str,
     streak = a["streak"]
     bets = sum(1 for d in decisions if d["decision"] == "BET")
     options: list[tuple[float, str]] = []
+    if a.get("on_tilt"):
+        options.append((0.9, "Yesterday was a disaster. I'm getting that money back today."))
     if s["desperation"] > 0.5:
         options.append((s["desperation"], "Management is watching. If this week goes badly I'm out — time to swing."))
     if s["fear"] > 0.45:

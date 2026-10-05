@@ -35,6 +35,26 @@ syndicates poaching stars (CEO counter-offers by style), raise demands and resen
 who wrecked the company, season awards with an "Awards night" screen; names are unique across a company's
 history; big wins/swings rate-limited so the timeline stays readable.
 
+## Done since (2026-10-04)
+
+From the playtest feedback: chairs face their desks and tables, continuous rugs and doormats, staff go home at
+night and walk back in each morning, CEO reviews gather the affected people plus each desk's lead (one-to-ones
+in the CEO's office). New: *The Portavia Ledger* (a small stock market, news arcs and a daily paper whose stories
+really affect the company), office expansion into the east wing (canteen, seventh desk room, media studio,
+leased by the CEO), and sandbox tools (investors, disasters, market shocks, planted headlines, morale, star
+applicant, CEO swap, free space, difficulty). Recalibrated: studio and canteen costs/effects tuned after an
+ablation, rare stories made rarer; Normal is neutral-to-better vs. the previous build (see ECONOMY.md).
+A second dev stack (`backend-dev`/`frontend-dev`, ports 8001/5174, `dev.db`) keeps a running game untouched.
+
+Later the same day: bookmakers limit winning desks (soft books cut stakes for desks that win their money, the
+sharp book only reins in runaways; shown in the desk panel, the history, the paper and as office bubbles), so
+Easy no longer compounds into €0.7M companies (best run now €176k), and Hard was softened (€16k capital, lower
+costs) so disciplined CEOs can survive it. Calibration table in ECONOMY.md.
+
+Mood events: burned-out people call in sick (empty chairs, no bets), shaken tipsters lose their nerve and pass on
+everything, heavy losers go on tilt and chase it the next day, cocky winners brag and start arguments; the CEO
+can give time off or throw a team night out (each style differently). Chaotic companies feel it most.
+
 ## Next
 
 1. Visual polish pass with fresh eyes on a long run (label overlap at small zoom, crowded Bench).

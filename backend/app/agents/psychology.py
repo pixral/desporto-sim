@@ -14,6 +14,7 @@ from app.domain.base import Model, clamp
 from app.domain.betting import Bet
 from app.domain.people import Employee
 from app.domain.world import World
+from app.economy.config import CANTEEN_STRESS_RELIEF
 
 STATUS_DISTRESS = {"thriving": 0.0, "stable": 0.15, "strained": 0.45, "distress": 0.8, "bankrupt": 1.0}
 
@@ -26,6 +27,7 @@ class DayContext(Model):
     recent_roi: float
     recent_bets: int
     day_profit: float
+    canteen: bool = False  # the company runs a canteen (see economy.config.FACILITIES)
 
 
 def baseline_confidence(emp: Employee) -> float:
@@ -71,6 +73,7 @@ def daily_update(emp: Employee, ctx: DayContext) -> None:
         + 0.08 * max(0.0, (50 - p.reputation) / 50)
         - 0.08 * winning
         - 0.05 * ctx.company_thriving
+        - CANTEEN_STRESS_RELIEF * ctx.canteen
     )
     sensitivity = 0.75 + 0.5 * t.cautious - 0.35 * t.aggressive + 0.2 * t.ambitious
     p.stress += 0.12 * (clamp(target * sensitivity, 0.02, 0.98) - p.stress)
@@ -100,9 +103,9 @@ def daily_update(emp: Employee, ctx: DayContext) -> None:
     emp.mood = mood_label(emp)
 
 
-def researcher_daily_update(emp: Employee, distress: float, lab_budget_ratio: float) -> None:
+def researcher_daily_update(emp: Employee, distress: float, lab_budget_ratio: float, canteen: bool = False) -> None:
     p, t = emp.psyche, emp.traits
-    target = 0.15 + 0.3 * distress + 0.15 * max(0.0, 1 - lab_budget_ratio)
+    target = 0.15 + 0.3 * distress + 0.15 * max(0.0, 1 - lab_budget_ratio) - CANTEEN_STRESS_RELIEF * canteen
     sensitivity = 0.8 + 0.4 * t.cautious
     p.stress = clamp(p.stress + 0.08 * (target * sensitivity - p.stress), 0.02, 0.98)
     emp.mood = mood_label(emp)

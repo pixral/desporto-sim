@@ -36,11 +36,12 @@ from app.domain.betting import Bet
 from app.domain.events import ManagementLog, Memo
 from app.domain.people import DecisionLog, Employee
 from app.domain.world import World
-from app.economy import accounting
+from app.economy import accounting, bookmakers
+from app.economy import market
 from app.economy import valuation as val
 from app.sports.provider import ISportsDataProvider
 
-from . import drama, history, lab, metrics
+from . import city, drama, history, lab, metrics, moods
 from .rng import dump_rng, load_rng
 from .summary import build_summary
 
@@ -52,6 +53,11 @@ PHASES: list[tuple[str, time]] = [
 ]
 MAX_MATCHES_PER_DAY = 6
 MAX_BETS_BY_LEVEL = {0: 2, 1: 3, 2: 4, 3: 4}
+
+
+def max_bets(emp: Employee, today: date) -> int:
+    """Daily bet allowance; someone on tilt squeezes in one more."""
+    return MAX_BETS_BY_LEVEL.get(emp.level, 3) + (1 if moods.tilted(emp, today) else 0)
 DECISION_LOG_SIZE = 150
 MATCH_RETENTION_DAYS = 450
 
@@ -129,12 +135,15 @@ class SimulationEngine:
                 e.status, e.task = "idle", "Morning coffee"
         for dept in w.departments.values():
             dept.day_profit = 0.0
+        moods.morning(w, self.rng)  # sick days, leave, lost nerve
         if d.day == 1 and w.clock.day_index > 0:
             self._month_close(d - timedelta(days=1))
             if w.ended:
                 return
         self._sync_sports()
+        city.morning(w)  # the paper: yesterday's markets, city news, football, our own story
         if d.day == 1 and w.clock.day_index > 0:
+            self._bookmaker_reviews()
             drama.monthly(w, self.rng)
             lab.run_audit(w)
             self._refresh_candidates(force=True)
@@ -144,19 +153,49 @@ class SimulationEngine:
             self._refresh_candidates(force=False)
             await self._ceo_review("weekly")
         await lab.lab_morning(w, self.index, self.popular, self.gateway, self.rng)
+        self._studio_show()
         ceo = w.ceo()
         if ceo.status == "idle":
-            ceo.status, ceo.task = "ceo_office", "Reading the overnight numbers"
+            ceo.status, ceo.task = "ceo_office", "Reading the morning paper"
+
+    def _bookmaker_reviews(self) -> None:
+        """Soft bookmakers cut the stakes they accept from desks that keep winning (and slowly forgive losers)."""
+        w = self.world
+        for dept, book, old, new in bookmakers.review_limits(w):
+            members = [e for e in w.department_members(dept.id) if e.role == "tipster"]
+            lead = next((e for e in members if e.id == dept.head_id), None) or (
+                max(members, key=lambda e: e.profit) if members else None)
+            who = [lead.id] if lead else []
+            if new < old:
+                history.record(w, "book_limit", f"{book} limits the {dept.name} to €{new:,.0f} a bet",
+                               f"Was €{old:,.0f}. Winning accounts get restricted; the desk will have to take worse "
+                               "prices elsewhere.", 2, "bad", who, dept.id, {"book": book, "limit": new})
+            else:
+                history.record(w, "book_limit_lifted", f"{book} raises the {dept.name}'s limit to €{new:,.0f}",
+                               f"Was €{old:,.0f}.", 1, "neutral", who, dept.id, {"book": book, "limit": new})
+
+    def _studio_show(self) -> None:
+        """With a media studio, the two in-form tipsters record the morning tips show for subscribers."""
+        w = self.world
+        if not market.leased(w, "studio"):
+            return
+        free = [e for e in w.tipsters() if e.status == "idle"]
+        for e in sorted(free, key=lambda e: (-e.month_profit, e.id))[:2]:
+            e.status, e.task = "studio", "Recording the morning tips show"
 
     async def _analysis(self) -> None:
         w = self.world
         today = w.today
+        ceo = w.ceo()
+        ceo.status, ceo.task = "ceo_office", "Following the desks' picks"  # the morning meeting is over
         todays = sorted((m for m in w.matches.values()
                          if m.kickoff.date() == today and m.status == "scheduled" and m.odds),
                         key=lambda m: (m.kickoff, m.id))
         analyses: dict[str, list[MatchAnalysis]] = {}
         leanings: dict[str, list[Leaning]] = {}
         for emp in sorted(w.tipsters(), key=lambda e: e.id):
+            if emp.is_away(today):
+                continue
             dept = w.departments.get(emp.department_id or "")
             strat = w.strategies.get(emp.strategy_id or "")
             if dept is None or not dept.active or strat is None:
@@ -190,7 +229,7 @@ class SimulationEngine:
         for emp_id in order:
             emp = w.employees[emp_id]
             ctx = build_tipster_context(w, self.index, emp, analyses[emp_id], leanings,
-                                        MAX_BETS_BY_LEVEL.get(emp.level, 3))
+                                        max_bets(emp, today))
             jobs.append(self.gateway.run(
                 purpose="tipster_day", agent_id=emp.id, agent_name=emp.name, sim_time=w.clock.now,
                 system=prompts.tipster_system(ctx), user=prompts.tipster_user(ctx), context=ctx,
@@ -207,7 +246,7 @@ class SimulationEngine:
         by_id = {r.match.id: r for r in rows}
         seen: set[str] = set()
         bets_placed = 0
-        max_bets = MAX_BETS_BY_LEVEL.get(emp.level, 3)
+        bet_limit = max_bets(emp, w.today)
         coworker_ids = {e.name: e.id for e in w.active_employees()}
         for dec in out.decisions:
             row = by_id.get(dec.match_id)
@@ -224,14 +263,17 @@ class SimulationEngine:
                 stake = min(float(dec.stake or 0.0), max_stake, dept.bankroll)
                 if dec.stake and dec.stake > max_stake + 0.01:
                     notes.append(f"stake {dec.stake:.2f} clamped to limit {max_stake:.2f}")
+                choice = bookmakers.choose_book(dept, m, dec.market, stake) if best and stake >= 1.0 else None
                 if best is None:
                     notes.append("unknown market; treated as NO_BET")
-                elif bets_placed >= max_bets:
+                elif bets_placed >= bet_limit:
                     notes.append("daily bet limit reached; treated as NO_BET")
-                elif stake < 1.0:
+                elif choice is None or choice[2] < 1.0:
                     notes.append("stake below €1; treated as NO_BET")
                 else:
-                    book, price = best
+                    book, price, stake, limit_note = choice
+                    if limit_note:
+                        notes.append(limit_note)
                     if dec.odds and abs(dec.odds - price) / price > 0.03:
                         notes.append(f"quoted {dec.odds:.2f}, booked at best available {price:.2f}")
                     cand = next((c for c in row.candidates if c.market == dec.market), None)
@@ -287,14 +329,15 @@ class SimulationEngine:
             b = w.bets[bid]
             open_by_emp[b.employee_id] = open_by_emp.get(b.employee_id, 0) + 1
         for e in w.tipsters():
+            if e.is_away(w.today):
+                continue
             n = open_by_emp.get(e.id, 0)
             if n:
                 e.status, e.task = "watching", f"Watching {n} open bet(s)"
             elif e.status != "stressed":
                 e.status, e.task = "idle", "Taking a break"
         ceo = w.ceo()
-        if ceo.status not in ("meeting",):
-            ceo.status, ceo.task = "ceo_office", "Reviewing desk exposure"
+        ceo.status, ceo.task = "ceo_office", "Reviewing desk exposure"
 
     async def _settlement(self) -> None:
         w = self.world
@@ -336,6 +379,7 @@ class SimulationEngine:
         day_pnl = sum(d.day_profit for d in w.departments.values())
         self._daily_people()
         drama.daily(w, self.rng)
+        moods.evening(w, self.rng)  # tilt for tomorrow, bragging
         accounting.accrue_daily_costs(w)
         for note in accounting.ensure_liquidity(w):
             history.record(w, "liquidity", note, "", 2, "bad")
@@ -352,6 +396,7 @@ class SimulationEngine:
         distress = psychology.STATUS_DISTRESS.get(w.finances.status, 0.2)
         thriving = w.finances.status == "thriving"
         layoffs = recent_layoffs(w)
+        canteen = market.leased(w, "canteen")
         for e in sorted(w.active_employees(), key=lambda e: e.id):
             if e.role == "tipster":
                 recent = metrics.recent_stats(w, e, 50)
@@ -359,15 +404,15 @@ class SimulationEngine:
                 psychology.daily_update(e, psychology.DayContext(
                     distress=distress, company_thriving=thriving,
                     dept_month_profit=dept.month_profit if dept else 0.0, recent_layoffs=layoffs,
-                    recent_roi=recent.roi, recent_bets=recent.bets, day_profit=e.day_profit))
+                    recent_roi=recent.roi, recent_bets=recent.bets, day_profit=e.day_profit, canteen=canteen))
                 if e.day_profit:
                     e.pnl_flash_seq += 1
                     e.status = "celebrating" if e.day_profit > 0 else "frustrated"
                     e.task = f"Day P/L €{e.day_profit:+.2f}"
-                if e.psyche.stress > 0.75:
+                if e.psyche.stress > 0.75 and not e.is_away(w.today):
                     e.status = "stressed"
             elif e.role == "researcher":
-                psychology.researcher_daily_update(e, distress, w.finances.lab_budget / 60.0)
+                psychology.researcher_daily_update(e, distress, w.finances.lab_budget / 60.0, canteen)
             e.series.append([w.clock.day_index, round(e.profit, 2), round(e.psyche.reputation, 1),
                              round(e.psyche.stress, 3), round(e.psyche.confidence, 3)])
             if len(e.series) > 1500:
@@ -430,10 +475,8 @@ class SimulationEngine:
             w.memos.append(Memo(time=w.clock.now, author_id=ceo.id, scope=scope, text=out.memo.strip()[:800]))
             w.memos = w.memos[-60:]
             history.record(w, "memo", f"CEO memo ({scope})", out.memo.strip()[:800], 1, "neutral", [ceo.id])
-        touched = {a.params.get("employee_id") for a in records if a.applied}
-        for e in w.active_employees():
-            if e.id in touched and e.role != "ceo":
-                e.status, e.task = "meeting", "Called into the CEO's office"
+        touched = {str(a.params.get("employee_id")) for a in records if a.applied and a.params.get("employee_id")}
+        drama.gather_meeting(w, scope, touched)
         if scope == "monthly":
             cleanup_candidate_strategies(w, set())
 

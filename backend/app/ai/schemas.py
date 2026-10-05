@@ -35,6 +35,8 @@ CEOActionType = Literal[
     "DEPLOY_STRATEGY", "ADJUST_STRATEGY",
     "FREEZE_HIRING", "UNFREEZE_HIRING", "CUT_SALARIES",
     "TAKE_LOAN", "REPAY_LOAN",
+    "LEASE_SPACE", "RELEASE_SPACE",
+    "TEAM_EVENT", "GIVE_TIME_OFF",
 ]
 
 
@@ -49,6 +51,7 @@ class CEOAction(BaseModel):
     pct: float | None = None
     field: str | None = None
     value: float | None = None
+    facility: Literal["canteen", "desk_wing", "studio"] | None = None
     reason: str = ""
 
 

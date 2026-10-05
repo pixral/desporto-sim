@@ -16,10 +16,13 @@ from app.domain.people import Employee
 from app.domain.sports import Match
 from app.domain.strategy import PARAM_BOUNDS
 from app.domain.world import World
+from app.economy import bookmakers
+from app.economy import config as EC
+from app.economy import market
 from app.economy import valuation as val
 from app.simulation import metrics
 
-from .catalog import CEO_STYLE_INFO, DEPARTMENT_KINDS, MAX_DESK_ROOMS, MAX_DESK_SIZE, SPECIALTIES
+from .catalog import CEO_STYLE_INFO, DEPARTMENT_KINDS, MAX_DESK_SIZE, SPECIALTIES
 
 SELECTION_LABELS = {"draw": "Draw", "over_2_5": "Over 2.5 goals", "under_2_5": "Under 2.5 goals"}
 
@@ -91,6 +94,9 @@ def situation_notes(world: World, emp: Employee, recent: metrics.PerfStats) -> l
     if dept:
         verb = "lost" if dept.month_profit < 0 else "made"
         notes.append(f"The {dept.name} has {verb} €{abs(dept.month_profit):.0f} this month.")
+        limited = [f"{b} €{v:.0f}" for b, v in sorted(dept.book_limits.items()) if v < EC.BOOK_LIMITS.get(b, v)]
+        if limited:
+            notes.append("Bookmakers limit your desk's stakes per bet: " + ", ".join(limited) + ".")
     reviewing = any(e.under_review for e in world.tipsters()) or recent_layoffs(world, 21) > 0
     if reviewing:
         notes.append("Management is reviewing staff.")
@@ -100,6 +106,10 @@ def situation_notes(world: World, emp: Employee, recent: metrics.PerfStats) -> l
     notes.append(f"Your reputation is {emp.psyche.reputation:.0f}/100.")
     if emp.under_review:
         notes.append("You are formally under review after a warning from the CEO.")
+    if emp.tilt_on == world.today:
+        notes.append("You lost badly yesterday and you are desperate to win it back today.")
+    if emp.frozen_until is not None and world.today <= emp.frozen_until:
+        notes.append("You have lost your nerve after a long losing run: you can hardly bring yourself to back anything.")
     if emp.streak <= -3:
         notes.append(f"You are on a {-emp.streak}-bet losing streak.")
     elif emp.streak >= 3:
@@ -194,6 +204,8 @@ def build_tipster_context(world: World, index: SportsIndex, emp: Employee, analy
             "career": {"bets": emp.bets_total, "profit": _r(emp.profit, 2), "roi": _r(emp.roi)},
             "month_profit": _r(emp.month_profit, 2), "no_bet_rate": _r(emp.no_bet_rate(), 2),
             "under_review": emp.under_review, "warnings": emp.warnings, "salary": emp.salary,
+            "on_tilt": emp.tilt_on == world.today,
+            "lost_nerve": emp.frozen_until is not None and world.today <= emp.frozen_until,
         },
         "department": {
             "id": dept.id if dept else None, "name": dept.name if dept else "—",
@@ -236,6 +248,8 @@ def employee_rows(world: World, days: int = 90) -> list[dict[str, Any]]:
             "no_bet_rate": _r(e.no_bet_rate(), 2),
             "reputation": _r(e.psyche.reputation, 1), "stress": _r(e.psyche.stress), "confidence": _r(e.psyche.confidence),
             "mood": e.mood, "under_review": e.under_review, "warnings": e.warnings, "streak": e.streak,
+            "away": e.away_reason if e.is_away(world.today) else None,
+            "lost_nerve": e.frozen_until is not None and world.today <= e.frozen_until,
         })
     return rows
 
@@ -257,6 +271,7 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
             "preferred_specialties": DEPARTMENT_KINDS[d.kind].specialties if d.kind in DEPARTMENT_KINDS else [],
             "bankroll": _r(d.bankroll, 2),
             "stake_limit_pct": _r(d.stake_limit_pct, 4), "profit_30d": _r(p30.profit, 2),
+            "bookmaker_limits": {b: bookmakers.limit(d, b) for b in EC.BOOK_LIMITS},
             "profit_90d": _r(p90.profit, 2), "roi_90d": _r(p90.roi), "bets_90d": p90.bets, "z_90d": _r(p90.z, 2),
             "headcount": len(members), "head": world.employees[d.head_id].name if d.head_id in world.employees else None,
             "age_days": (world.today - d.founded).days,
@@ -306,6 +321,7 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
             "months_since_salary_cut": world.milestones.get("months_since_salary_cut", 99),
             "days_since_desk_closed": world.today.toordinal() - int(world.milestones.get("last_desk_closed", 0)),
             "days_since_swap": world.today.toordinal() - int(world.milestones.get("last_swap", 0)),
+            "days_since_team_event": world.today.toordinal() - int(world.milestones.get("last_team_event", 0)),
             "monthly_payroll": _r(sum(e.salary for e in world.active_employees()), 2),
         },
         "departments": dept_rows,
@@ -322,9 +338,40 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
         "available_department_kinds": [{"kind": k, "name": v.name} for k, v in DEPARTMENT_KINDS.items()
                                        if k not in active_kinds and k != "lab"],
         "limits": {"max_fires": 2 if scope == "monthly" else 1, "max_hires": 2 if scope == "monthly" else 0,
-                   "max_desks": MAX_DESK_ROOMS, "desks": desk_count, "max_desk_size": MAX_DESK_SIZE,
+                   "max_desks": market.desk_rooms(world), "desks": desk_count, "max_desk_size": MAX_DESK_SIZE,
                    "min_stake_pct": 0.005, "max_stake_pct": 0.08},
         "recent_events": [f"{e.time.date()}: {e.title}" for e in world.events[-12:] if e.importance >= 2],
+        "office": office_context(world),
+        "city": city_context(world),
+    }
+
+
+def office_context(world: World) -> dict[str, Any]:
+    staff = [e for e in world.active_employees() if e.role != "ceo"]
+    quits = sum(1 for e in world.employees.values() if e.left and (world.today - e.left).days <= 90
+                and e.leave_reason and not e.leave_reason.startswith("fired"))
+    mult = EC.preset(world.config.difficulty)["cost_mult"]
+    return {
+        "facilities": [{"key": k, "name": v["name"], "leased": market.leased(world, k),
+                        "since": world.office.leased[k].isoformat() if market.leased(world, k) else None,
+                        "fit_out": _r(float(v["fit_out"]) * mult, 0),  # type: ignore[arg-type]
+                        "monthly_cost": _r(market.facility_monthly_cost(world, k), 0), "effect": v["effect"]}
+                       for k, v in EC.FACILITIES.items()],
+        "avg_staff_stress": _r(sum(e.psyche.stress for e in staff) / len(staff)) if staff else 0.0,
+        "voluntary_departures_90d": quits,
+    }
+
+
+def city_context(world: World) -> dict[str, Any]:
+    city = world.city
+    return {
+        "headlines": [p.headline + (f" ({p.effect})" if p.effect else "")
+                      for p in market.recent_press(world, 3, 2)][-6:],
+        "betting_sector_sentiment": _r(market.betting_sentiment(world), 3),
+        "consumer_confidence": _r(city.economy, 2),
+        "central_bank_rate_pct": city.base_rate,
+        "credit_line_rate_monthly": _r(market.loan_rate_monthly(world), 4),
+        "active_effects": [m["label"] + f" ({m['days_left']} days left)" for m in market.active_modifiers(world)],
     }
 
 

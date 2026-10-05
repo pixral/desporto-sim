@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAP_H, MAP_W, iso, unIso } from "./iso";
+import { MAP_H, iso, unIso } from "./iso";
 import { buildLayout, roomAt, walkable } from "./layout";
 import { findPath } from "./pathfind";
 
@@ -21,9 +21,25 @@ describe("iso projection", () => {
 });
 
 describe("office layout", () => {
-  it("covers every tile with exactly one room", () => {
-    const L = buildLayout(ALL);
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) expect(roomAt(L, x, y)).not.toBeNull();
+  it("covers every tile of the building with exactly one room", () => {
+    for (const leased of [new Set<string>(), new Set(["studio"]), new Set(["canteen", "desk_wing", "studio"])]) {
+      const L = buildLayout(ALL, leased);
+      expect(L.width).toBe(leased.size ? 47 : 36);
+      for (let y = 0; y < MAP_H; y++) for (let x = 0; x < L.width; x++) expect(roomAt(L, x, y)).not.toBeNull();
+      expect(roomAt(L, L.width, 3)).toBeNull();
+    }
+  });
+
+  it("the east wing's rooms are reachable once leased, and lots are locked", () => {
+    const L = buildLayout(new Set([0, 1, 2, 3, 4, 5, 6]), new Set(["canteen", "desk_wing", "studio"]));
+    for (const s of [...L.canteenSeats, ...L.studioSeats, ...L.deskSeats[6]]) {
+      expect(findPath(L, L.entrance, s), `no path to ${s.key}`).not.toBeNull();
+    }
+    expect(L.canteenSeats.length).toBe(12);
+    const partial = buildLayout(new Set([0]), new Set(["canteen"]));
+    expect(roomAt(partial, 40, 12)?.kind).toBe("lot");
+    expect(walkable(partial, 40, 12)).toBe(false);
+    expect(partial.furniture.some((f) => f.slot === 6)).toBe(false);
   });
 
   it("every seat and spot is reachable from the entrance", () => {

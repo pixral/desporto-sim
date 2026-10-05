@@ -144,6 +144,12 @@ class Employee(Model):
     warnings: int = 0
     promotions: int = 0
 
+    # mood events (see simulation/moods.py)
+    away_until: date | None = None  # off sick or on leave through this date
+    away_reason: str = ""  # "sick" | "leave"
+    tilt_on: date | None = None  # chasing yesterday's losses on this day
+    frozen_until: date | None = None  # lost their nerve: can't bring themselves to bet
+
     # live presentation state
     status: str = "idle"
     task: str = ""
@@ -165,6 +171,9 @@ class Employee(Model):
     def tenure_days(self, today: date) -> int:
         end = self.left or today
         return max(0, (end - self.hired).days)
+
+    def is_away(self, today: date) -> bool:
+        return self.away_until is not None and today <= self.away_until
 
     def no_bet_rate(self) -> float:
         return sum(self.no_bet_flags) / len(self.no_bet_flags) if self.no_bet_flags else 0.0

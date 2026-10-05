@@ -67,6 +67,20 @@ function shoutFor(e: HistoryEvent): { text: string; color: string } | null {
       return { text: "Raise!", color: GOOD };
     case "raise_refused":
       return { text: "Unbelievable…", color: BAD };
+    case "tilt":
+      return { text: "I'll win it back!", color: DRAMA };
+    case "lost_nerve":
+      return { text: "I can't pick…", color: BAD };
+    case "found_nerve":
+      return { text: "Back in the game.", color: GOOD };
+    case "back_at_work":
+      return { text: "I'm back.", color: NEUTRAL };
+    case "team_event":
+      return { text: "Team night!", color: GOOD };
+    case "book_limit":
+      return { text: `${String(e.data.book ?? "They")} limited us!`, color: BAD };
+    case "book_limit_lifted":
+      return { text: "Limits back up!", color: GOOD };
     case "board_fires_ceo":
       return { text: "…the board?!", color: BAD };
     case "new_ceo":
@@ -105,7 +119,7 @@ export class Drama {
       const lines = e.data.lines as Record<string, string> | undefined;
       if (lines) {
         // two-person scenes: each says their own line
-        const color = e.kind === "argument" ? BAD : GOOD;
+        const color = e.kind === "argument" ? BAD : e.kind === "brag" ? DRAMA : GOOD;
         for (const [id, text] of Object.entries(lines)) {
           this.shouts = this.shouts.filter((x) => x.actorId !== id);
           this.shouts.push({ actorId: id, text, color, born: now });

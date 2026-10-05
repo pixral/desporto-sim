@@ -14,7 +14,7 @@ from app.economy import config as EC
 from app.economy import valuation as val
 from app.sports.provider import ISportsDataProvider
 
-from . import history
+from . import city, history
 from .rng import dump_rng
 
 INITIAL_DESKS = ["germany", "england", "europe", "markets"]
@@ -79,7 +79,9 @@ def create_world(config: RunConfig, sports: ISportsDataProvider) -> World:
         e.status = "idle"
     world.stats.hired = len(world.active_employees()) - 1
     world.candidates = hiring.generate_candidates(world, rng, 4)
+    city.ensure_city(world)  # the city's market, with some price history
     world.finances.peak_value = val.valuation(world)
+    world.milestones["founding_value"] = round(world.finances.peak_value, 2)
     world.finances.peak_value_day = start
     history.record(world, "founded", f"{config.company_name} founded",
                    f"CEO {ceo.name} opens the doors with €{config.starting_capital:,.0f}, "

@@ -3,6 +3,7 @@ import { api } from "./api/client";
 import { DepartmentPanel } from "./components/DepartmentPanel";
 import { EmployeePanel } from "./components/EmployeePanel";
 import { EndScreen } from "./components/EndScreen";
+import { GodPanel } from "./components/GodPanel";
 import { KpiStrip } from "./components/KpiStrip";
 import { NavRail } from "./components/NavRail";
 import { NewRunDialog } from "./components/NewRunDialog";
@@ -17,6 +18,7 @@ import { Ceo } from "./views/Ceo";
 import { Dashboard } from "./views/Dashboard";
 import { History } from "./views/History";
 import { Lab } from "./views/Lab";
+import { Newspaper } from "./views/Newspaper";
 import { Saves } from "./views/Saves";
 import { Staff } from "./views/Staff";
 
@@ -84,6 +86,7 @@ export function App() {
           {tab === "lab" && <Lab />}
           {tab === "history" && <History />}
           {tab === "ceo" && <Ceo />}
+          {tab === "paper" && <Newspaper />}
           {tab === "ai" && <AiLog />}
           {tab === "saves" && <Saves />}
           {selectedEmployee && <EmployeePanel key={selectedEmployee} id={selectedEmployee} />}
@@ -94,6 +97,7 @@ export function App() {
       {showNewRun && <NewRunDialog />}
       <EndScreen />
       <RecapModal />
+      <GodPanel />
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

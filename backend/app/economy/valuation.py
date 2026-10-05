@@ -7,6 +7,7 @@ from app.domain.world import World
 from app.simulation import metrics
 
 from . import config as C
+from . import market
 
 
 def equity(world: World) -> float:
@@ -23,7 +24,8 @@ def trailing_net(world: World, months: int = 3) -> float | None:
 
 def valuation(world: World) -> float:
     f = world.finances
-    goodwill = f.subscribers * f.subscription_price * 6
+    # the subscriber business is priced like listed betting firms: their share prices move it
+    goodwill = f.subscribers * f.subscription_price * 6 * market.betting_sentiment(world)
     tn = trailing_net(world, 3)
     momentum = max(0.0, tn) * 1.5 if tn is not None else 0.0
     return equity(world) + goodwill + momentum
@@ -36,8 +38,8 @@ def estimated_operating_cost(world: World) -> float:
     heads = len(world.active_employees())
     comps = {c for d in world.active_departments() for c in d.competitions}
     mult = C.preset(world.config.difficulty)["cost_mult"]
-    fixed = C.RENT_BASE + C.RENT_PER_HEAD * heads + C.DATA_PER_COMPETITION * len(comps)
-    return payroll + mult * fixed + f.marketing_budget + f.lab_budget
+    fixed = C.RENT_BASE + C.RENT_PER_HEAD * heads + C.DATA_PER_COMPETITION * len(comps) * market.modifier(world, "data_prices")
+    return payroll + mult * fixed + market.facilities_monthly_cost(world) + f.marketing_budget + f.lab_budget
 
 
 def monthly_burn(world: World) -> float:

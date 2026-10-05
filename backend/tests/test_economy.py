@@ -105,6 +105,7 @@ def test_valuation_and_runway(fresh):
 def test_subscribers_react_to_track_record(fresh):
     world, _, _ = fresh()
     world.finances.subscribers = 100
+    world.city.economy = 0.0  # neutral consumer confidence
     gained, lost, revenue = accounting.subscriptions_update(world)  # no bets yet: neutral track record
     assert lost == round(100 * EC.preset("normal")["sub_churn"])
     assert revenue == world.finances.subscribers * world.finances.subscription_price
