@@ -4,6 +4,7 @@ import type { AiCallFull, EmployeeDetail } from "../api/types";
 import { useStore } from "../state/store";
 import { eur, MARKET_LABEL, pct, shortDate, signedEur, tone } from "../util/format";
 import { useLive } from "../util/hooks";
+import { PersonActions } from "./CeoActions";
 import { LineChart } from "./charts";
 import { Portrait } from "./Portrait";
 
@@ -34,7 +35,7 @@ export function EmployeePanel({ id }: { id: string }) {
   const [tab, setTab] = useState<T>("overview");
   const [call, setCall] = useState<AiCallFull | null>(null);
   const key = `${id}:${state?.clock.day_index}:${state?.clock.phase}`;
-  const { data: d, error } = useLive<EmployeeDetail>(() => api.employee(id), key);
+  const { data: d, error, reload } = useLive<EmployeeDetail>(() => api.employee(id), key);
   const dept = state?.departments.find((x) => x.id === d?.department_id);
   const color = d?.role === "researcher" ? "#0e9aa7" : dept?.color ?? "#8a7f96";
 
@@ -76,7 +77,10 @@ export function EmployeePanel({ id }: { id: string }) {
         {!d ? (
           <div className="empty">Loading…</div>
         ) : tab === "overview" ? (
-          <Overview d={d} />
+          <>
+            <PersonActions d={d} onDone={reload} />
+            <Overview d={d} />
+          </>
         ) : tab === "bets" ? (
           <Bets d={d} />
         ) : tab === "performance" ? (

@@ -139,6 +139,7 @@ class _Ctx:
         self.hires = 0
         self.max_fires = 2 if scope == "monthly" else 1
         self.max_hires = 2 if scope == "monthly" else 0
+        self.talks = 0
         self.touched: set[str] = set()
 
 
@@ -550,6 +551,105 @@ def _time_off(ctx: _Ctx, a) -> tuple[bool, str]:
     return True, f"{e.name} off for {days} day(s)"
 
 
+TALK_STRESS_RELIEF = 0.05
+TALK_TRUST = 3.0
+MAX_TALKS = 3
+
+
+def _talk(ctx: _Ctx, a) -> tuple[bool, str]:
+    """A one-to-one with the CEO: a little less stress, a little more trust in the boss."""
+    w = ctx.world
+    e = _emp(ctx, a.employee_id)
+    if e is None:
+        return False, "no such active employee"
+    if e.is_away(w.today):
+        return False, f"{e.name} is away"
+    if ctx.talks >= MAX_TALKS:
+        return False, "no time for more one-to-ones in this review"
+    ctx.talks += 1
+    e.psyche.stress = clamp(e.psyche.stress - TALK_STRESS_RELIEF, 0.02, 0.98)
+    rel = e.relationships.get(w.ceo().id)
+    if rel is not None:
+        rel.trust = clamp(rel.trust + TALK_TRUST, 0, 100)
+    e.add_career(w.today, "talk", "A one-to-one with the CEO.")
+    ctx.touched.add(e.id)
+    return True, f"talked with {e.name} (stress {e.psyche.stress:.0%})"
+
+
+MARKET_NAMES = {"home_win": "home wins", "draw": "draws", "away_win": "away wins", "over_2_5": "over 2.5 goals",
+                "under_2_5": "under 2.5 goals"}
+
+
+def _lab_brief(ctx: _Ctx, a) -> tuple[bool, str]:
+    """Point the LAB at a league, a market, underdogs or a struggling desk (field = "kind:value")."""
+    w = ctx.world
+    if ctx.scope != "monthly":
+        return False, "the research brief is set at the monthly review"
+    kind, _, value = (a.field or "").partition(":")
+    comps: list[str] = []
+    if kind == "none":
+        w.player.lab_brief = None
+        return True, "no brief: the researchers follow their own ideas"
+    if kind == "competition":
+        if value not in w.competitions:
+            return False, "unknown competition"
+        label = w.competitions[value].name
+    elif kind == "market":
+        if value not in MARKET_NAMES:
+            return False, "unknown market"
+        label = MARKET_NAMES[value]
+    elif kind == "underdogs":
+        label, value = "underdogs at longer odds", ""
+    elif kind == "desk":
+        d = _dept(ctx, a.department_id)
+        if d is None or d.kind == "lab":
+            return False, "unknown desk"
+        value, label, comps = d.id, f"ideas for the {d.name}", list(d.competitions)
+    else:
+        return False, "unknown brief"
+    w.player.lab_brief = {"kind": kind, "value": value, "label": label, "since": w.today.isoformat(),
+                          "competitions": comps}
+    history.record(w, "lab_brief", f"LAB brief: {label}", a.reason, 1, "neutral",
+                   [e.id for e in w.active_employees("researcher")])
+    return True, f"LAB brief: {label}"
+
+
+def _test_candidate(ctx: _Ctx, a) -> tuple[bool, str]:
+    """Ask the LAB to backtest an applicant's method; it takes a LAB slot until next Monday."""
+    from datetime import timedelta
+
+    from app.simulation import lab, player
+
+    w = ctx.world
+    cand = next((c for c in w.candidates if c.id == a.candidate_id), None)
+    if cand is None:
+        return False, "no such candidate"
+    if cand.role != "tipster" or cand.strategy_id is None:
+        return False, "the LAB only backtests tipsters' methods"
+    if cand.lab_backtest_n is not None:
+        return False, "already tested"
+    if cand.lab_test_due is not None:
+        return False, f"already being tested (results {cand.lab_test_due:%d %b})"
+    if not w.active_employees("researcher"):
+        return False, "the LAB has no researcher"
+    if w.finances.lab_budget < lab.MIN_TEST_BUDGET:
+        return False, f"the LAB needs a budget of at least €{lab.MIN_TEST_BUDGET:.0f} to test applicants"
+    if lab.free_slots(w) <= 0:
+        return False, f"every LAB slot is busy ({lab.slots(w)} in all)"
+    due = w.today + timedelta(days=7 - w.today.weekday())  # next Monday
+    cand.lab_test_due = due
+    cand.expires = max(cand.expires, player.next_month_start(w.today) + timedelta(days=1))  # still around on the 1st
+    return True, f"the LAB is testing {cand.name}'s method (results on {due:%a %d %b})"
+
+
+def _shelve(ctx: _Ctx, a) -> tuple[bool, str]:
+    exp = ctx.world.experiments.get(a.experiment_id or "")
+    if exp is None or exp.status != "completed":
+        return False, "no finished experiment with that id"
+    exp.status = "shelved"
+    return True, f"'{exp.name}' shelved in the strategy library"
+
+
 def _repay(ctx: _Ctx, a) -> tuple[bool, str]:
     paid = accounting.repay_loan(ctx.world, a.amount or 0.0)
     if paid <= 0:
@@ -565,5 +665,6 @@ _HANDLERS = {
     "ADJUST_STRATEGY": _adjust, "FREEZE_HIRING": _freeze, "UNFREEZE_HIRING": _unfreeze,
     "CUT_SALARIES": _cut_salaries, "TAKE_LOAN": _loan, "REPAY_LOAN": _repay,
     "LEASE_SPACE": _lease, "RELEASE_SPACE": _release, "TEAM_EVENT": _team_event, "GIVE_TIME_OFF": _time_off,
+    "TALK": _talk, "SET_LAB_BRIEF": _lab_brief, "TEST_CANDIDATE": _test_candidate, "SHELVE_STRATEGY": _shelve,
 }
 

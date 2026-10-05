@@ -257,6 +257,11 @@ def _board_review(world: World, rng: random.Random) -> None:
     value = val.valuation(world)
     capital = world.config.starting_capital
     collapsed = value < 0.45 * capital or (val.drawdown(world) >= 0.6 and world.finances.status in ("strained", "distress"))
+    if world.config.player_ceo:  # the player gets a warning first, and being fired ends the run
+        from . import player  # player imports drama's neighbours; keep the import local
+
+        player.board_review(world, collapsed, value)
+        return
     if not collapsed or rng.random() > 0.5:
         return
     old_style = ceo.ceo_style or world.config.ceo_style

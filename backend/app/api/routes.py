@@ -11,6 +11,8 @@ from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisco
 from pydantic import BaseModel, Field
 
 from app.agents.catalog import CEO_STYLE_INFO
+from app.ai.schemas import CEOAction
+from app.domain.player import PAUSE_MODES
 from app.domain.world import CEO_STYLES, RunConfig
 from app.economy.config import DIFFICULTY
 from app.simulation import city, god, views
@@ -38,6 +40,10 @@ class NewRunRequest(BaseModel):
     initial_tipsters: int = Field(8, ge=2, le=16)
     difficulty: Literal["easy", "normal", "hard"] = "normal"
     ai_provider: Literal["mock", "anthropic"] = "mock"
+    player_ceo: bool = False
+    player_name: str = Field("", max_length=40)
+    pause_mode: Literal["every_review", "monthly", "events_only"] = "monthly"
+    ironman: bool = False
 
 
 class ControlRequest(BaseModel):
@@ -47,6 +53,25 @@ class ControlRequest(BaseModel):
 
 class SaveRequest(BaseModel):
     label: str = Field("Manual save", max_length=120)
+
+
+class ReviewRequest(BaseModel):
+    actions: list[CEOAction] = Field(default_factory=list, max_length=40)
+    memo: str = Field("", max_length=800)
+
+
+class ActRequest(BaseModel):
+    action: CEOAction
+
+
+PAUSE_MODE_INFO = {
+    "monthly": {"label": "Monthly reviews (recommended)", "description": "You run the review on the 1st of each month. Your advisor "
+                "handles the Monday stand-ups, but never fires anyone, closes a desk or cuts pay for you."},
+    "every_review": {"label": "Every review", "description": "The clock stops every Monday and on the 1st. Most "
+                     "control, most interruptions."},
+    "events_only": {"label": "Hands off", "description": "Your advisor runs every review (still no firings, closures "
+                    "or pay cuts without you). You act in office hours and through queued decisions."},
+}
 
 
 class GodRequest(BaseModel):
@@ -65,6 +90,7 @@ def meta(request: Request) -> dict[str, Any]:
         "default_model": s.default_model,
         "paper_trading_only": True,
         "difficulties": [{"key": k, **v} for k, v in DIFFICULTY.items()],
+        "pause_modes": [{"key": k, **PAUSE_MODE_INFO[k]} for k in PAUSE_MODES],
     }
 
 
@@ -82,7 +108,9 @@ async def new_run(body: NewRunRequest, request: Request) -> dict[str, Any]:
     config = RunConfig(company_name=body.company_name, ceo_style=body.ceo_style, seed=body.seed,
                        start_date=body.start_date, starting_capital=body.starting_capital,
                        initial_tipsters=body.initial_tipsters, difficulty=body.difficulty,
-                       ai_provider=body.ai_provider)
+                       ai_provider=body.ai_provider, player_ceo=body.player_ceo,
+                       player_name=body.player_name.strip() if body.player_ceo else "",
+                       pause_mode=body.pause_mode, ironman=body.ironman and body.player_ceo)
     try:
         world = await runner.new_run(config)
     except (RuntimeError, ValueError) as exc:
@@ -181,6 +209,66 @@ async def god_action(body: GodRequest, request: Request) -> dict[str, Any]:
     return {"ok": True, "message": message, "god_actions": runner.world.stats.god_actions if runner.world else 0}
 
 
+@router.get("/review")
+def review(request: Request) -> dict[str, Any]:
+    """The briefing waiting for the player (or `open: false`)."""
+    return views.review_view(world_or_404(runner_of(request)))
+
+
+@router.post("/review")
+async def sign_review(body: ReviewRequest, request: Request) -> dict[str, Any]:
+    runner = runner_of(request)
+    world_or_404(runner)
+    try:
+        records = await runner.resolve_review(body.actions, body.memo)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"results": [r.model_dump(mode="json") for r in records]}
+
+
+@router.get("/candidates")
+def candidates(request: Request) -> dict[str, Any]:
+    world = world_or_404(runner_of(request))
+    if not world.config.player_ceo:
+        raise HTTPException(400, "you are not running this company")
+    return views.candidates_view(world)
+
+
+@router.post("/act")
+async def act(body: ActRequest, request: Request) -> dict[str, Any]:
+    """Office hours: one decision between reviews."""
+    runner = runner_of(request)
+    world_or_404(runner)
+    try:
+        rec = await runner.office_action(body.action)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return rec.model_dump(mode="json")
+
+
+@router.post("/queue")
+async def queue(body: ActRequest, request: Request) -> dict[str, Any]:
+    """Keep a review-only decision for the next monthly review."""
+    runner = runner_of(request)
+    world_or_404(runner)
+    try:
+        p = await runner.queue(body.action)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return p.model_dump(mode="json")
+
+
+@router.delete("/queue/{index}")
+async def unqueue(index: int, request: Request) -> dict[str, Any]:
+    runner = runner_of(request)
+    world_or_404(runner)
+    try:
+        await runner.unqueue(index)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"removed": index}
+
+
 @router.get("/summary")
 def summary(request: Request) -> dict[str, Any]:
     return views.summary_view(world_or_404(runner_of(request)))
@@ -234,6 +322,8 @@ async def load(save_id: int, request: Request) -> dict[str, Any]:
         world = await runner_of(request).load(save_id)
     except KeyError as exc:
         raise HTTPException(404, "no such save") from exc
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
     return {"run_id": world.run_id, "date": world.today.isoformat()}
 
 

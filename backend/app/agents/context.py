@@ -295,7 +295,7 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
     active_kinds = {d.kind for d in world.active_departments()}
     desk_count = sum(1 for d in world.active_departments() if d.kind != "lab")
     burn = val.monthly_burn(world)
-    return {
+    ctx = {
         "date": world.today.isoformat(),
         "scope": scope,
         "ceo": {"id": ceo.id, "name": ceo.name, "style": ceo.ceo_style,
@@ -344,6 +344,9 @@ def build_ceo_context(world: World, scope: str) -> dict[str, Any]:
         "office": office_context(world),
         "city": city_context(world),
     }
+    if world.config.player_ceo:
+        ctx["advisor"] = True  # a human runs the company; this report goes to their advisor
+    return ctx
 
 
 def office_context(world: World) -> dict[str, Any]:
@@ -390,7 +393,7 @@ def build_lab_context(world: World, researcher: Employee, history_matches: int) 
              "params": strategy_params(world.strategies[x.strategy_id]) if x.strategy_id in world.strategies else {}}
             for x in list(world.experiments.values())[-8:]]
     comps = sorted({c for d in world.active_departments() for c in d.competitions})
-    return {
+    ctx = {
         "date": world.today.isoformat(),
         "researcher": {"id": researcher.id, "name": researcher.name, "specialty": researcher.specialty,
                        "specialty_label": SPECIALTIES[researcher.specialty].label,
@@ -404,6 +407,9 @@ def build_lab_context(world: World, researcher: Employee, history_matches: int) 
         "audit_hints": [a.text for a in world.audit_findings[-5:]],
         "param_bounds": {k: list(v) for k, v in PARAM_BOUNDS.items()},
     }
+    if world.player.lab_brief:
+        ctx["brief"] = world.player.lab_brief  # player mode: what the CEO wants researched
+    return ctx
 
 
 def strategy_params(s) -> dict[str, Any]:

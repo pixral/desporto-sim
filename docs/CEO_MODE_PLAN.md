@@ -1,7 +1,32 @@
 # Build plan: play as CEO
 
-Status: **design approved in principle, not implemented.** Sketches discussed on 2026-10-04: Monday briefing,
-office click menus, event cards, fired screen, hiring screen, new company dialog.
+Status: **phases 0 and 1 implemented (2026-10-04, milestone B: playable).** Phases 2–4 not started.
+Sketches discussed on 2026-10-04: Monday briefing, office click menus, event cards, fired screen, hiring screen,
+new company dialog.
+
+### What phase 0 + 1 delivered
+- New company dialog: "Who runs it?", your name, advisor style, pause mode (monthly / every review / hands off),
+  ironman, difficulty.
+- Engine split (`_ceo_review` → proposals, `resolve_review`, `office_action`); the clock waits for the player;
+  open briefings are saved; golden-run test keeps watch mode identical.
+- Briefing screen: KPIs, the board's rule, the morning paper, advisor suggestions (accept / edit the number /
+  skip, accept all), your decisions in a side column (remove = undo before sign-off), memo, Ctrl+Enter, tabs for
+  People, Hire (CV vs LAB test, desk fit), Desks, Money, LAB (budget, slots, research brief, roll out / shelve,
+  audit fixes) and Office (leases). Results screen after sign-off.
+- Office menus on people and desks (advisor one-liner, trust in you, costs, limits, review-only items queued).
+- TALK, weekly limits, the queue, CEO page (season, stats, queue, applicants, log "You" vs "Advisor acted").
+- Board warning then firing (Easy: warning only), five-season career with retirement, player end screens.
+- LAB: research brief, LAB slots shared with chosen applicant tests (results next Monday), shelving.
+- Not yet: phase 3's board targets (the briefing shows the board's actual rule instead), score, shadow CEO;
+  tooltips on every number.
+
+### Open questions: decided for phase 1
+1. Default pause mode: **monthly** (listed first, "recommended"); weekly stand-ups go to the advisor.
+2. The player's CEO has **no personality of its own** for now (neutral); the founding CEO's traits only inform the
+   advisor.
+3. Talks: **three a week, once per person** (talks in a briefing count too).
+4. Easy: the board **only warns**.
+5. Shadow CEO: still open (phase 3).
 
 **Goal:** the player takes the CEO's chair. Tipsters, the LAB, rivals, the board and the city stay autonomous.
 The current AI CEO becomes the player's *advisor* (suggestions with reasons) and the *shadow CEO* the player is

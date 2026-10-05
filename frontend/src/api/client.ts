@@ -1,4 +1,9 @@
 import type {
+  ActionResult,
+  CandidatesView,
+  CeoAction,
+  Proposal,
+  ReviewView,
   AiCallFull,
   DepartmentDetail,
   AiCallSummary,
@@ -18,6 +23,7 @@ import type {
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
+    cache: "no-store", // live game data: never serve an old answer
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
@@ -64,6 +70,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ action, params }),
     }),
+  review: () => req<ReviewView>("/api/review"),
+  candidates: () => req<CandidatesView>("/api/candidates"),
+  signReview: (actions: CeoAction[], memo: string) =>
+    req<{ results: ActionResult[] }>("/api/review", { method: "POST", body: JSON.stringify({ actions, memo }) }),
+  act: (action: CeoAction) => req<ActionResult>("/api/act", { method: "POST", body: JSON.stringify({ action }) }),
+  queue: (action: CeoAction) => req<Proposal>("/api/queue", { method: "POST", body: JSON.stringify({ action }) }),
+  unqueue: (index: number) => req<{ removed: number }>(`/api/queue/${index}`, { method: "DELETE" }),
   newRun: (body: Record<string, unknown>) =>
     req<{ run_id: string }>("/api/runs", { method: "POST", body: JSON.stringify(body) }),
 };

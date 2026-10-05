@@ -24,21 +24,33 @@ export function EndScreen() {
     ["Worst employee", s.worst_employee ? `${s.worst_employee} (${signedEur(s.worst_employee_profit)})` : "—"],
     ["Departments created / closed", `${s.departments_created} / ${s.departments_closed}`],
     ["Strategies invented by the LAB", String(s.strategies_invented)],
-    ["CEOs fired by the board", String(s.ceo_changes ?? 0)],
+    ...(s.player_ceo ? [] : [["CEOs fired by the board", String(s.ceo_changes ?? 0)] as [string, string]]),
     ["Seasons completed", String(s.seasons ?? 0)],
     ["AI calls / cost", `${s.ai_calls.toLocaleString()} / $${s.ai_cost_usd.toFixed(2)}`],
   ];
   if (s.god_actions) rows.push(["Sandbox interventions", String(s.god_actions)]);
+  if (s.player_ceo) {
+    rows.splice(0, 0, ["Briefings you signed", String(s.reviews_signed ?? 0)], ["Advice taken / skipped", `${s.advice_taken ?? 0} / ${s.advice_skipped ?? 0}`]);
+  }
+  const kind = s.end_kind ?? "bankrupt";
+  const heading = { bankrupt: "BANKRUPT", fired: "FIRED BY THE BOARD", retired: "RETIRED" }[kind];
+  const lasted = s.player_ceo
+    ? kind === "retired"
+      ? `${s.seasons} seasons in charge`
+      : `You lasted ${s.days_survived} days`
+    : `${s.days_survived} days survived`;
   return (
     <div className="modal-backdrop">
       <div className="end-card" role="dialog" aria-label="Run summary">
         <div className="muted" style={{ fontFamily: "var(--font-head)", fontSize: 12 }}>
-          BANKRUPT{s.god_actions ? " · SANDBOX RUN" : ""}
+          {heading}
+          {s.god_actions ? " · SANDBOX RUN" : ""}
         </div>
         <h1>{s.company_name.toUpperCase()}</h1>
-        <div className="days">{s.days_survived} days survived</div>
+        <div className="days">{lasted}</div>
         <div className="dim">
-          {shortDate(s.founded)} – {shortDate(s.last_day)} · CEO {s.ceo_name} ({s.ceo_style.replace("_", " ")})
+          {shortDate(s.founded)} – {shortDate(s.last_day)} · CEO {s.ceo_name}{" "}
+          {s.player_ceo ? `(you) · advisor: ${s.ceo_style.replaceAll("_", " ")}` : `(${s.ceo_style.replaceAll("_", " ")})`}
         </div>
         <div className="thought" style={{ marginTop: 8 }}>
           {s.end_reason}

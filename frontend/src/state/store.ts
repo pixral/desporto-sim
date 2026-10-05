@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { StateView } from "../api/types";
+import type { ActionResult, StateView } from "../api/types";
 
 export type Tab = "office" | "dashboard" | "staff" | "lab" | "history" | "ceo" | "paper" | "ai" | "saves";
 
@@ -16,6 +16,10 @@ interface Store {
   setRecapOpen: (id: string | null) => void;
   godOpen: boolean;
   setGodOpen: (v: boolean) => void;
+  briefingHiddenFor: string | null;
+  setBriefingHidden: (id: string | null) => void;
+  signoff: { scope: string; date: string; results: ActionResult[] } | null;
+  setSignoff: (v: { scope: string; date: string; results: ActionResult[] } | null) => void;
   setState: (s: StateView) => void;
   setConnected: (c: boolean) => void;
   setTab: (t: Tab) => void;
@@ -39,6 +43,10 @@ export const useStore = create<Store>((set) => ({
   setRecapOpen: (id) => set({ recapOpen: id }),
   godOpen: false,
   setGodOpen: (v) => set({ godOpen: v }),
+  briefingHiddenFor: null,
+  setBriefingHidden: (id) => set({ briefingHiddenFor: id }),
+  signoff: null,
+  setSignoff: (v) => set({ signoff: v }),
   setState: (s) => set({ state: s }),
   setConnected: (c) => set({ connected: c }),
   setTab: (t) => set({ tab: t }),

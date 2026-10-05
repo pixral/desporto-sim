@@ -116,6 +116,20 @@ overrides: `DESPORTO_MODEL_TIPSTER_DAY`, `DESPORTO_MODEL_CEO_REVIEW`, `DESPORTO_
 `DESPORTO_EFFORT_*`. Invalid outputs are retried twice with the validation error; then a safe fallback
 (no bets / no actions) is used and the failure is logged.
 
+## The advisor (player mode)
+
+When a human runs the company, the CEO review call becomes the advisor's: the same context (plus
+`advisor: true`), the same policy for the chosen style (or Claude, told that it advises and the CEO decides),
+the same output schema. Its actions become proposals with readable labels and reasons in the briefing; its
+thought is shown as "Your advisor"; its memo is a draft the player can edit. Reviews the player doesn't take are
+applied by the advisor except firings, desk closures and pay cuts. Automatic people decisions that still follow
+a style (poaching counter-offers, raise demands) follow the advisor's style until they become player decisions.
+In the office the advisor gives a one-line read on each person (its open suggestion first, otherwise their
+numbers: running hot, on tilt, losing for a while, back in form, one of the best).
+
+The LAB in player mode reads the CEO's research brief from its context (`brief`); the mock researcher follows
+it unless its stubbornness wins, Claude is asked to follow it and explain how it read it.
+
 ## Workplace drama (`simulation/drama.py`)
 
 Deterministic, personality-driven, no AI calls:

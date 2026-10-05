@@ -1,0 +1,98 @@
+{
+ "aggressive_expansionist:1": {
+  "bets": 561,
+  "cash": 1877.62,
+  "employees": 18,
+  "events": 49,
+  "events_sha": "ad71af986367575f",
+  "value": 16612.55
+ },
+ "aggressive_expansionist:2": {
+  "bets": 707,
+  "cash": 2098.96,
+  "employees": 16,
+  "events": 60,
+  "events_sha": "505ff75ff49ac36f",
+  "value": 37187.14
+ },
+ "aggressive_expansionist:3": {
+  "bets": 758,
+  "cash": 1918.79,
+  "employees": 17,
+  "events": 61,
+  "events_sha": "c62d01bad77fbb22",
+  "value": 30086.77
+ },
+ "chaotic_founder:1": {
+  "bets": 570,
+  "cash": 1377.28,
+  "employees": 18,
+  "events": 85,
+  "events_sha": "a35beec1ca3a3251",
+  "value": 14530.99
+ },
+ "chaotic_founder:2": {
+  "bets": 727,
+  "cash": 6312.96,
+  "employees": 18,
+  "events": 81,
+  "events_sha": "b52c86c7f9dbc962",
+  "value": 33030.05
+ },
+ "chaotic_founder:3": {
+  "bets": 434,
+  "cash": 7571.52,
+  "employees": 16,
+  "events": 65,
+  "events_sha": "0a87880373cbfe5c",
+  "value": 17924.99
+ },
+ "conservative_operator:1": {
+  "bets": 363,
+  "cash": 4856.21,
+  "employees": 10,
+  "events": 34,
+  "events_sha": "f34b45b849ad2a14",
+  "value": 19209.72
+ },
+ "conservative_operator:2": {
+  "bets": 500,
+  "cash": 5300.75,
+  "employees": 10,
+  "events": 33,
+  "events_sha": "220aa9cdc064418e",
+  "value": 24850.22
+ },
+ "conservative_operator:3": {
+  "bets": 486,
+  "cash": 3724.59,
+  "employees": 10,
+  "events": 33,
+  "events_sha": "d403aafc752f01c5",
+  "value": 29663.82
+ },
+ "data_driven:1": {
+  "bets": 372,
+  "cash": 4667.27,
+  "employees": 10,
+  "events": 63,
+  "events_sha": "d161790cbdfc4550",
+  "value": 19179.78
+ },
+ "data_driven:2": {
+  "bets": 484,
+  "cash": 3856.57,
+  "employees": 10,
+  "events": 65,
+  "events_sha": "5f90f4640d4c391d",
+  "value": 25975.0
+ },
+ "data_driven:3": {
+  "bets": 473,
+  "cash": 3619.79,
+  "employees": 11,
+  "events": 79,
+  "events_sha": "246e67306ce317da",
+  "value": 26892.08
+ }
+}

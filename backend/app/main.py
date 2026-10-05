@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -30,10 +30,15 @@ def create_app(settings: Settings | None = None, autostart_run: bool = True) -> 
         runner.start()
         if autostart_run:
             saves = repo.list_saves(limit=20)
-            resumable = next((s for s in saves if not s["ended"]), None)
-            if resumable:
-                await runner.load(resumable["id"])
-            else:
+            resumed = False
+            for row in (s for s in saves if not s["ended"]):
+                try:
+                    await runner.load(row["id"])
+                except PermissionError:  # an ironman company's older save
+                    continue
+                resumed = True
+                break
+            if not resumed:
                 from app.domain.world import RunConfig
 
                 await runner.new_run(RunConfig(ai_provider=settings.ai_provider))
@@ -54,6 +59,8 @@ def create_app(settings: Settings | None = None, autostart_run: bool = True) -> 
 
         @app.get("/{path:path}", include_in_schema=False)
         def spa(path: str):
+            if path == "api" or path.startswith("api/"):  # an unknown API route is a 404, never the page
+                raise HTTPException(404, "no such API route")
             target = dist / path
             if path and target.is_file():
                 return FileResponse(target)

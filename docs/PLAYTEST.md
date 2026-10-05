@@ -49,6 +49,24 @@ Start with `.\start.ps1` (or the Browser pane while a Claude session is running)
 - [ ] Cocky winners **brag**, which can start an argument at the desk.
 - [ ] CEO view: "GIVE_TIME_OFF" and "TEAM_EVENT" decisions, and the "Team night out" in History.
 
+## 8. Playing as CEO
+- [ ] New company → "Who runs it?" **You**, your name, an advisor, "Monthly reviews", Normal. The top bar reads
+      "CEO: <you> (you) · advisor: … · season 1/5".
+- [ ] Click a tipster: the "You, the CEO" menu shows the advisor's one-liner, their trust in you, Talk / Warn /
+      Time off / Move / Fire; promotions are greyed with "Queue a promotion". Click a desk: max stake, fund,
+      withdraw, "Queue closing it".
+- [ ] Talk to someone (toast; Talk greys out for them until next week). Fire asks to confirm and shows the severance.
+- [ ] Run at 64×: on the 1st the clock stops and the monthly review opens by itself. Accept or skip the
+      advisor's ideas, edit a number, add your own from the tabs, sign off (Ctrl+Enter). The results list what went
+      through and why anything was refused; the clock carries on.
+- [ ] "Hide" the briefing to look around: the top bar shows "Monthly review ▸" and space reopens it.
+- [ ] CEO page: the queue, applicants (Test → results next Monday; Queue hire), the log with "You" /
+      "Advisor acted" and what you turned down.
+- [ ] LAB tab in a monthly review: set a research brief; the next experiments' rationale mentions it.
+- [ ] Let a company slide (Hard helps): after day 180 the board warns you, a month later it fires you and the end
+      screen says "Fired by the board". On Easy it only warns.
+- [ ] Ironman: Sandbox is greyed out; loading an older save of that company is refused.
+
 ## What to report
 For anything odd: what you did, the in-game date, and a screenshot. The **History** and **AI log** views usually
 show why something happened.

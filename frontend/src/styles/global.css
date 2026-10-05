@@ -1241,6 +1241,306 @@ button.sandbox:hover {
   }
 }
 
+/* ------------------------------------------------------------------ player mode: briefing, CEO menus */
+.modal.briefing {
+  width: min(1180px, 100%);
+  height: 94vh; /* fixed, so switching tabs doesn't move everything */
+  max-height: 94vh;
+  box-shadow: 0 0 0 2px var(--accent), 8px 8px 0 0 rgba(0, 0, 0, 0.45);
+}
+.brief-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+.board-note,
+.brief-paper {
+  font-size: 13px;
+  padding: 6px 10px;
+  background: var(--bg);
+  box-shadow: inset 3px 0 0 var(--line-strong);
+  margin-bottom: 6px;
+}
+.board-note.warned {
+  box-shadow: inset 3px 0 0 var(--neg);
+  color: var(--ink);
+}
+.brief-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 14px;
+  margin-top: 10px;
+  align-items: start;
+}
+.brief-main {
+  min-width: 0;
+}
+.brief-side {
+  position: sticky;
+  top: 0;
+  max-height: calc(94vh - 60px);
+  overflow-y: auto;
+}
+.brief-col {
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 2px var(--line);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.proposal {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--grid);
+}
+.proposal button {
+  min-width: 82px;
+}
+.decision {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--grid);
+}
+.decision .grow {
+  flex: 1;
+  min-width: 0;
+}
+.chip {
+  display: inline-block;
+  font-family: var(--font-head);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 5px;
+  margin-left: 4px;
+  background: var(--panel-3);
+  color: var(--ink-2);
+  vertical-align: middle;
+}
+.decision .chip {
+  margin-left: 0;
+  min-width: 52px;
+  text-align: center;
+}
+.chip.src-advisor {
+  background: #3a2d55;
+  color: var(--drama);
+}
+.chip.src-queue {
+  background: #3d3220;
+  color: var(--accent);
+}
+.chip.src-you,
+.chip.by-player {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.chip.by-advisor {
+  background: #3a2d55;
+  color: var(--drama);
+}
+.chip.flag {
+  background: #4a2630;
+  color: var(--neg);
+}
+.chip.flag.good {
+  background: #1f3d2e;
+  color: var(--pos);
+}
+input.edit-num {
+  width: 84px;
+  padding: 3px 6px;
+  font-family: var(--font-num);
+  font-size: 17px;
+}
+.memo-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.memo-edit textarea {
+  resize: vertical;
+}
+.brief-tabs {
+  margin-top: 14px;
+  padding-left: 0;
+  background: transparent;
+  border-bottom: 2px solid var(--line);
+}
+.brief-tabs button.active {
+  background: var(--panel-2);
+}
+.brief-section {
+  padding: 10px 0 0;
+  min-height: 160px;
+}
+.row-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.people-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.person-row {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 2px var(--line);
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+.advisor-note {
+  font-size: 13px;
+  color: var(--drama);
+  margin: 4px 0;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.inline {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.inline .lbl {
+  min-width: 260px;
+  color: var(--ink-2);
+}
+.brief-box {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 2px var(--line);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cand-grid,
+.desk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.cand,
+.desk-card {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 2px var(--line);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.evidence {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.pitch {
+  font-style: italic;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.money-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.ceo-menu {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.review-only {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--grid);
+}
+.player-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  text-transform: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0;
+  background: var(--panel-2);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+.check-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 10px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.check-row b {
+  font-family: var(--font-head);
+  font-weight: 400;
+  font-size: 11px;
+}
+button.pulse {
+  animation: pulse 1.2s steps(2, jump-none) infinite;
+}
+@keyframes pulse {
+  from {
+    box-shadow: 0 0 0 2px #b36f1c, 2px 2px 0 2px rgba(0, 0, 0, 0.4);
+  }
+  to {
+    box-shadow: 0 0 0 4px var(--ink), 2px 2px 0 2px rgba(0, 0, 0, 0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button.pulse {
+    animation: none;
+  }
+}
+@media (max-width: 900px) {
+  .brief-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .brief-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .brief-side {
+    position: static;
+    max-height: none;
+  }
+  .inline .lbl {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 /* ------------------------------------------------------------------ responsive (keep last) */
 @media (max-width: 1200px) {
   .grid-2,

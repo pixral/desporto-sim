@@ -79,8 +79,12 @@ def tipster_user(ctx: dict[str, Any]) -> str:
 
 def ceo_system(ctx: dict[str, Any]) -> str:
     c = ctx["ceo"]
+    who = (f"You are the advisor to {c['name']}, the CEO of {ctx['company']['name']}, a sports betting company staffed "
+           "by AI tipsters. You propose; the CEO decides, so give every action a clear reason. "
+           if ctx.get("advisor") else
+           f"You are {c['name']}, CEO of {ctx['company']['name']}, a sports betting company staffed by AI tipsters. ")
     return (
-        f"You are {c['name']}, CEO of {ctx['company']['name']}, a sports betting company staffed by AI tipsters. "
+        who +
         f"{PAPER_NOTICE}\nYour management style: {c['style_label']} — {c['style_description']} "
         f"Personality: {c['traits_text']}.\n"
         "You do not predict matches. You run the company: people, money, risk and strategy. Review the report and "
@@ -115,6 +119,8 @@ def ceo_user(ctx: dict[str, Any]) -> str:
               "(facility: canteen, desk_wing or studio; leases only at monthly reviews) "
               "TEAM_EVENT (a paid night out that lowers everyone's stress; monthly reviews) "
               "GIVE_TIME_OFF(employee_id, value=days 1-7: paid rest, no bets meanwhile). "
+              + ("TALK(employee_id: a one-to-one that eases stress a little; at most 3 per review). "
+                 if ctx.get("advisor") else "") +
               "Each action may include a short reason.",
               "Respond with JSON: {\"thought\": str, \"memo\": str, \"actions\": [ ... ]}"]
     return "\n".join(lines)
@@ -151,6 +157,10 @@ def lab_user(ctx: dict[str, Any]) -> str:
         "AUDIT HINTS:",
         *[f"- {h}" for h in ctx["audit_hints"]],
         "",
+        *([f"BRIEF FROM THE CEO: focus on {ctx['brief']['label']}"
+           + (f" (competitions {', '.join(ctx['brief']['competitions'])})" if ctx["brief"].get("competitions") else "")
+           + ". Follow it unless you strongly believe in another idea, and say how you read it in the rationale.", ""]
+          if ctx.get("brief") else []),
         "Respond with JSON: {\"name\": str, \"hypothesis\": str, \"rationale\": str, \"params\": {...}}",
     ]
     return "\n".join(lines)

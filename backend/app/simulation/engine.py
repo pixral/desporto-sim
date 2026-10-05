@@ -27,13 +27,13 @@ from app.agents.context import (
 from app.agents.hiring import cleanup_candidate_strategies, generate_candidates
 from app.ai.gateway import AICallRecord, AIGateway
 from app.ai.provider import IAgentModelProvider
-from app.ai.schemas import CEOReviewOutput, TipsterDayOutput
+from app.ai.schemas import CEOAction, CEOReviewOutput, TipsterDayOutput
 from app.analysis.index import SportsIndex
 from app.analysis.models import candidates as strategy_candidates
 from app.analysis.models import estimate_match
 from app.domain.base import clamp
 from app.domain.betting import Bet
-from app.domain.events import ManagementLog, Memo
+from app.domain.events import ActionRecord, ManagementLog, Memo
 from app.domain.people import DecisionLog, Employee
 from app.domain.world import World
 from app.economy import accounting, bookmakers
@@ -41,7 +41,7 @@ from app.economy import market
 from app.economy import valuation as val
 from app.sports.provider import ISportsDataProvider
 
-from . import city, drama, history, lab, metrics, moods
+from . import city, drama, history, lab, metrics, moods, player
 from .rng import dump_rng, load_rng
 from .summary import build_summary
 
@@ -83,6 +83,8 @@ class SimulationEngine:
         w = self.world
         if w.ended:
             return "ended"
+        if player.awaiting(w):
+            return "awaiting_ceo"  # the clock stops until the player signs off the briefing
         name, t = PHASES[w.clock.phase_index]
         day = w.clock.now.date()
         if w.clock.phase_index == 0 and w.clock.now.time() > t:  # last step was the night settlement
@@ -102,7 +104,8 @@ class SimulationEngine:
     async def run_days(self, days: int) -> None:
         target = self.world.clock.day_index + days
         while self.world.clock.day_index < target and not self.world.ended:
-            await self.step()
+            if await self.step() == "awaiting_ceo":
+                break
 
     def sync_provider_state(self) -> None:
         """Copy the sports provider's hidden state into the world before saving."""
@@ -142,16 +145,28 @@ class SimulationEngine:
                 return
         self._sync_sports()
         city.morning(w)  # the paper: yesterday's markets, city news, football, our own story
+        if player.active(w):
+            lab.run_candidate_tests(w, self.index, self.popular)  # the applicant tests the player asked for
         if d.day == 1 and w.clock.day_index > 0:
             self._bookmaker_reviews()
             drama.monthly(w, self.rng)
+            player.check_retirement(w)
+            if w.ended:  # player mode: fired by the board, or retired after the last season
+                return
             lab.run_audit(w)
             self._refresh_candidates(force=True)
-            lab.evaluate_candidates(w, self.index, self.popular)
+            if not player.active(w):  # the player chooses whom the LAB tests
+                lab.evaluate_candidates(w, self.index, self.popular)
             await self._ceo_review("monthly")
         elif d.weekday() == 0 and w.clock.day_index > 0:
             self._refresh_candidates(force=False)
             await self._ceo_review("weekly")
+        if player.awaiting(w):
+            return  # the rest of the morning runs once the player signs off (resolve_review)
+        await self._morning_tail()
+
+    async def _morning_tail(self) -> None:
+        w = self.world
         await lab.lab_morning(w, self.index, self.popular, self.gateway, self.rng)
         self._studio_show()
         ceo = w.ceo()
@@ -456,6 +471,7 @@ class SimulationEngine:
             cleanup_candidate_strategies(w, set())
 
     async def _ceo_review(self, scope: str) -> None:
+        """Ask the CEO (or, in player mode, the advisor) for decisions; then apply them or wait for the player."""
         w = self.world
         ceo = w.ceo()
         ctx = build_ceo_context(w, scope)
@@ -465,20 +481,66 @@ class SimulationEngine:
             seed=self.rng.randrange(1 << 30),
             fallback=lambda: CEOReviewOutput(thought="(no decision — the AI call failed)", memo="", actions=[]),
         )
-        records = management.apply_actions(w, self.rng, out.actions, scope)
-        w.management_log.append(ManagementLog(time=w.clock.now, scope=scope, thought=out.thought, memo=out.memo,
-                                              actions=records))
+        if not player.active(w):
+            self._apply_review(scope, out.thought, out.memo, out.actions, by="ai")
+            return
+        review = player.make_review(w, scope, out)
+        w.player.advisor_thought = review.thought
+        if player.decides(w, scope):
+            w.player.review = review  # the clock stops here until resolve_review()
+            ceo.status, ceo.task = "ceo_office", f"Reading the {scope} briefing"
+            return
+        actions, left = player.auto_actions(w, scope, review)
+        review.status = "auto"
+        w.player.reviews_auto += 1
+        self._apply_review(scope, review.thought, "", actions, by="advisor", skipped=left)
+
+    def _apply_review(self, scope: str, thought: str, memo: str, actions: list[CEOAction], by: str,
+                      skipped: list[str] | None = None) -> list[ActionRecord]:
+        w = self.world
+        ceo = w.ceo()
+        records = management.apply_actions(w, self.rng, actions, scope)
+        w.management_log.append(ManagementLog(time=w.clock.now, scope=scope, thought=thought, memo=memo,
+                                              actions=records, by=by, skipped=skipped or []))
         w.management_log = w.management_log[-120:]
-        ceo.thought = out.thought[:240]
+        if by == "ai":
+            ceo.thought = thought[:240]
         ceo.status, ceo.task = "meeting", f"{scope.capitalize()} review"
-        if out.memo.strip():
-            w.memos.append(Memo(time=w.clock.now, author_id=ceo.id, scope=scope, text=out.memo.strip()[:800]))
+        if memo.strip():
+            w.memos.append(Memo(time=w.clock.now, author_id=ceo.id, scope=scope, text=memo.strip()[:800]))
             w.memos = w.memos[-60:]
-            history.record(w, "memo", f"CEO memo ({scope})", out.memo.strip()[:800], 1, "neutral", [ceo.id])
+            history.record(w, "memo", f"CEO memo ({scope})", memo.strip()[:800], 1, "neutral", [ceo.id])
         touched = {str(a.params.get("employee_id")) for a in records if a.applied and a.params.get("employee_id")}
         drama.gather_meeting(w, scope, touched)
         if scope == "monthly":
             cleanup_candidate_strategies(w, set())
+        return records
+
+    async def resolve_review(self, actions: list[CEOAction], memo: str) -> list[ActionRecord]:
+        """The player signs off the open briefing: apply their decisions, then finish the morning."""
+        w = self.world
+        review = w.player.review
+        if w.ended or review is None or review.status != "open":
+            raise ValueError("no briefing is waiting for you")
+        taken, skipped = player.compare_with_advice(review, actions)
+        records = self._apply_review(review.scope, review.thought, memo, actions, by="player", skipped=skipped)
+        player.count_used(w, [r for r in records if r.type == "TALK"])
+        review.status = "resolved"
+        w.player.review = None
+        w.player.reviews_signed += 1
+        w.player.advice_taken += taken
+        w.player.advice_skipped += len(skipped)
+        if review.scope == "monthly":
+            w.player.queue = []  # queued decisions were offered (pre-ticked) in this briefing
+        await self._morning_tail()
+        w.rng_state = dump_rng(self.rng)
+        return records
+
+    def office_action(self, action: CEOAction) -> ActionRecord:
+        """Office hours: a decision between reviews (same validation as at a review)."""
+        rec = player.office_action(self.world, self.rng, action)
+        self.world.rng_state = dump_rng(self.rng)
+        return rec
 
     def _month_close(self, last_day: date) -> None:
         w = self.world
@@ -520,6 +582,7 @@ class SimulationEngine:
         w = self.world
         w.ended = True
         w.end_reason = reason
+        w.end_kind = "bankrupt"
         w.finances.status = "bankrupt"
         for e in w.active_employees():
             e.status, e.task = "leaving", "The lights are going out"

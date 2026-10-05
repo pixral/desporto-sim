@@ -33,6 +33,15 @@ Tests: `backend/.venv/Scripts/python -m pytest -q` (backend) and `npm test` (fro
 Calibration runs: `python -m app.tools.batch --days 730 --seeds 1 2 3 --styles all` (from `backend/`).
 API docs: http://127.0.0.1:8000/docs
 
+## Play as CEO
+
+When founding a company, choose **You** under "Who runs it?". You take the CEO's chair for five seasons; the
+AI CEO becomes your advisor. The clock stops for your briefings (monthly by default): accept, edit or skip the
+advisor's suggestions, hire with the LAB's evidence, set desk limits and budgets, lease space, write the memo,
+sign off. Between reviews, click people and desks to talk, warn, give time off, move or fire them; everything
+else can be queued for the next monthly review. Don't get fired by the board, don't go bankrupt. Choose
+**An AI CEO** to watch the company run itself as before. Rules: [SIMULATION_RULES](docs/SIMULATION_RULES.md#playing-as-ceo-player-mode).
+
 ## What you see
 
 - **Office**: departments as rooms, tipsters as pixel characters who walk between desks, the lounge
@@ -47,8 +56,8 @@ API docs: http://127.0.0.1:8000/docs
   CEO, free office space, difficulty. Everything is logged and counted on the end screen.
 - **East wing**: the CEO can lease a canteen, a seventh desk room and a media studio; they appear on the map.
 - **Staff**, **LAB** (experiments, audits, strategies), **History** (timeline of landmarks),
-  **CEO** (every review: thought, memo, actions done/rejected), **AI log** (every prompt and response),
-  **Saves**.
+  **CEO** (every review: thought, memo, actions done/rejected; as a player also your queue, applicants and
+  "You" vs "Advisor acted"), **AI log** (every prompt and response), **Saves**.
 
 ## Using Claude instead of the mock brains
 
@@ -65,4 +74,5 @@ Choose "Claude" when founding a company (or set `DESPORTO_AI_PROVIDER=anthropic`
 - [Economy](docs/ECONOMY.md)
 - [Decision log](docs/DECISIONS.md)
 - [Playtest checklist](docs/PLAYTEST.md)
+- [Build plan: play as CEO](docs/CEO_MODE_PLAN.md)
 - [Roadmap](ROADMAP.md)
